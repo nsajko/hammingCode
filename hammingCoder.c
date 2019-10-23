@@ -65,7 +65,7 @@ makeGen(long n, long k) {
 	for (j = 0; j < n; j++) {
 		if (j + 1 == pow) {
 			// j + 1 is a power of two.
-			for (i = pow + 1; i < n; i++) {
+			for (i = pow + 1; i <= n; i++) {
 				// We check columns that have the pow
 				// bit set.
 				if (i & pow) {
