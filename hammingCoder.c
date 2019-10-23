@@ -178,9 +178,9 @@ static inline
 void
 printBool(int b) {
 	if (b) {
-		putchar('0');
-	} else {
 		putchar('1');
+	} else {
+		putchar('0');
 	}
 }
 
