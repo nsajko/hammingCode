@@ -270,7 +270,7 @@ main(int argc, char *argv[]) {
 	printf("Linear block code [n = %ld, k = %ld]\ncode rate = R(K) = %g\n", n, k, (double)k / (double)n);
 
 	// Stdin input of source input message.
-	printf("\nEnter a message in bits (separated by whitespace) to be Hamming coded using the chosen code parameters:\n\n");
+	printf("\nEnter a message in bits (possibly separated by whitespace) to be Hamming coded using the chosen code parameters:\n\n");
 	enum {
 		// In bits.
 		initialInputMessageCapacity = 1UL << 13,
