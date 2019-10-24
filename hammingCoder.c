@@ -51,6 +51,26 @@ ceilDiv(long n) {
 	return (n - 1) / bitsInABitVectorSmall + 1;
 }
 
+// See below.
+static inline
+long
+hamm(long i) {
+	long m = 0, l;
+	for (l = 1; l < i; l++) {
+		if (!isPowerOfTwo(l)) {
+			m++;
+		}
+	}
+	return m;
+}
+
+// Returns the corresponding k Hamming code parameter for a given n.
+static inline
+long
+hammingK(long n) {
+	return hamm(n) + 1;
+}
+
 // Makes the generator matrix for the [n, k] Hamming code.
 static inline
 bitVector *
@@ -69,26 +89,13 @@ makeGen(long n, long k) {
 				// We check columns that have the pow
 				// bit set.
 				if (i & pow) {
-					// m will hold the index of the
-					// row in which we will set the bit.
-					long m = 0, l;
-					for (l = 1; l < i; l++) {
-						if (!isPowerOfTwo(l)) {
-							m++;
-						}
-					}
-
-					// Set the bit
-					// r[row=m, column=j].
-					printf("n=%ld, k=%ld, m=%ld, j=%ld\n", n, k, m, j); //// XXX DEBUGGING
-					r[m].arr[j / bitsInABitVectorSmall] |= 1 << (j % bitsInABitVectorSmall);
+					r[hamm(i)].arr[j / bitsInABitVectorSmall] |= 1 << (j % bitsInABitVectorSmall);
 				}
 			}
 			pow <<= 1;
 		} else {
 			// j + 1 is not a power of two. Set the bit
 			// r[row=nonPowerOfTwoColumns, column=j].
-			printf("nPOTC=%ld, j=%ld %ld\n", nonPowerOfTwoColumns, j, j / bitsInABitVectorSmall); //// XXX DEBUGGING
 			r[nonPowerOfTwoColumns].arr[j / bitsInABitVectorSmall] |= 1 << (j % bitsInABitVectorSmall);
 			nonPowerOfTwoColumns++;
 		}
@@ -253,23 +260,16 @@ main(int argc, char *argv[]) {
 		return 1;
 	}
 	long n = lexDecimalASCII(argv[1]);
-	if (n == 0) {
-		fprintf(stderr, "coder: wrong input for first argument (n)\n");
+	if (isPowerOfTwo(n)) {
+		fprintf(stderr, "coder: wrong input for first argument (n). n can not be zero, because no code words would exist in that case; and also it can not be a power of two, because a parity bit would be wasted in that case as the last bit\n");
 		return 1;
 	}
-	long k = lexDecimalASCII(argv[2]);
-	if (k == 0) {
-		fprintf(stderr, "coder: wrong input for second argument (k)\n");
+	long k = lexDecimalASCII(argv[2]), correctK = hammingK(n);
+	if (k != correctK) {
+		fprintf(stderr, "coder: wrong input for second argument (k), try %ld\n", correctK);
 		return 1;
 	}
 	printf("Linear block code [n = %ld, k = %ld]\ncode rate = R(K) = %g\n", n, k, (double)k / (double)n);
-	if (n <= k) {
-		fprintf(stderr, "coder: n <= k\n");
-		return 1;
-	}
-	if (n - 1 == k || n - floorLog2(n + 1) < k) {
-		fprintf(stderr, "coder: warning: these n,k parameters do not formally define a Hamming code, because the usual theorems do not apply\n");
-	}
 
 	// Stdin input of source input message.
 	printf("\nEnter a message in bits (separated by whitespace) to be Hamming coded using the chosen code parameters:\n\n");
