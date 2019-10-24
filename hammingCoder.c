@@ -148,7 +148,6 @@ rowMulMat(bitVector *out, bitVector *row, bitVector *mat) {
 
 		// Add up the corresponding range of rows from mat into
 		// out.
-		printf("i=%ld j=%ld out->len=%ld mat[0].len=%ld row->len=%ld\n", i, j, out->len, mat[0].len, row->len);
 		long k;
 		for (k = i; k < j; k++) {
 			xor(out, &(mat[k]));
@@ -175,12 +174,18 @@ void
 bitVectorMoveInto(bitVector *out, bitVector *in, long i) {
 	long w = i / bitsInABitVectorSmall, y = 0, l = ceilDiv(out->len);
 	i %= bitsInABitVectorSmall;
-	for (; y < l && w + 1 < ceilDiv(in->len); w++, y++) {
-		out->arr[y] = in->arr[w] >> i;
-		out->arr[y] |= in->arr[w + 1] << ((bitsInABitVectorSmall - i) % bitsInABitVectorSmall);
-	}
-	if (y < l) {
-		out->arr[y] = in->arr[w] >> i;  // TODO: Not sure in correctness here.
+	if (i != 0) {
+		for (; y < l && w + 1 < ceilDiv(in->len); w++, y++) {
+			out->arr[y] = in->arr[w] >> i;
+			out->arr[y] |= in->arr[w + 1] << ((bitsInABitVectorSmall - i) % bitsInABitVectorSmall);
+		}
+		if (y < l) {
+			out->arr[y] = in->arr[w] >> i;  // TODO: Not sure in correctness here.
+		}
+	} else {
+		for (; y < l && w < ceilDiv(in->len); w++, y++) {
+			out->arr[y] = in->arr[w];
+		}
 	}
 }
 
