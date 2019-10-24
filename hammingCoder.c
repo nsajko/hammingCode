@@ -12,8 +12,6 @@
 // TODO: Some functions may be counterproductively specified as 'inline'.
 // TODO: Mark pointer parameters as const where possible.
 
-////// XXX convert all operands of '>>' to unsigned if necessary. Otherwise, maybe use division instead of shifting.
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -89,14 +87,14 @@ makeGen(long n, long k) {
 				// We check columns that have the pow
 				// bit set.
 				if (i & pow) {
-					r[hamm(i)].arr[j / bitsInABitVectorSmall] |= 1 << (j % bitsInABitVectorSmall);
+					r[hamm(i)].arr[j / bitsInABitVectorSmall] |= 1UL << (j % bitsInABitVectorSmall);
 				}
 			}
 			pow <<= 1;
 		} else {
 			// j + 1 is not a power of two. Set the bit
 			// r[row=nonPowerOfTwoColumns, column=j].
-			r[nonPowerOfTwoColumns].arr[j / bitsInABitVectorSmall] |= 1 << (j % bitsInABitVectorSmall);
+			r[nonPowerOfTwoColumns].arr[j / bitsInABitVectorSmall] |= 1UL << (j % bitsInABitVectorSmall);
 			nonPowerOfTwoColumns++;
 		}
 	}
@@ -199,11 +197,11 @@ printBitVector(bitVector *bV) {
 	long w, i, l = bV->len / bitsInABitVectorSmall;
 	for (w = 0; w < l; w++) {
 		for (i = 0; i < bitsInABitVectorSmall; i++) {
-			printBool((1 << i) & bV->arr[w]);
+			printBool((1UL << i) & bV->arr[w]);
 		}
 	}
 	for (i = 0; i < bV->len % bitsInABitVectorSmall; i++) {
-		printBool((1 << i) & bV->arr[w]);
+		printBool((1UL << i) & bV->arr[w]);
 	}
 	printf("\n");
 }
@@ -248,7 +246,7 @@ static inline
 long
 floorLog2(long n) {
 	long r = 0;
-	for (; n >>= 1; r++) {}
+	for (; (n = (unsigned long)n >> 1); r++) {}
 	return r;
 }
 
@@ -275,7 +273,7 @@ main(int argc, char *argv[]) {
 	printf("\nEnter a message in bits (separated by whitespace) to be Hamming coded using the chosen code parameters:\n\n");
 	enum {
 		// In bits.
-		initialInputMessageCapacity = 1 << 13,
+		initialInputMessageCapacity = 1UL << 13,
 	};
 	bitVector inMsg = {0, initialInputMessageCapacity};
 	inMsg.arr = calloc(sizeof(inMsg.arr[0]), inMsg.cap / bitsInABitVectorSmall);
@@ -293,7 +291,7 @@ main(int argc, char *argv[]) {
 
 		// c is now either zero or one. Set or clear the
 		// corresponding bit accordingly.
-		tmpBits |= c << (inMsg.len % bitsInABitVectorSmall);
+		tmpBits |= (unsigned long)c << (inMsg.len % bitsInABitVectorSmall);
 
 		inMsg.len++;
 
