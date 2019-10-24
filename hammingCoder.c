@@ -121,7 +121,7 @@ countContiguous(bitVector *bV, long i, unsigned long b) {
 	if (b != 0) {
 		s = (bitVectorSmall)~0UL;
 	}
-	for (j = i; j < bV->len && (bV->arr[j / bitsInABitVectorSmall] == s); j += bitsInABitVectorSmall) {} //// XXX Iterations sometimes happen here when they should not ... ?
+	for (j = i; j < bV->len && (bV->arr[j / bitsInABitVectorSmall] == s); j += bitsInABitVectorSmall) {}
 	if (bV->len < j) {
 		j = bV->len;
 	}
@@ -302,13 +302,13 @@ main(int argc, char *argv[]) {
 	
 			// c is now either zero or one. Set or clear the
 			// corresponding bit accordingly.
-			tmpBits |= (unsigned long)c << (inMsg.len % bitsInABitVectorSmall);
+			tmpBits |= (bitVectorSmall)c << (inMsg.len % bitsInABitVectorSmall);
 
 			inMsg.len++;
 	
 			if (inMsg.cap - 1 < inMsg.len) {
 				inMsg.cap <<= 1;
-				inMsg.arr = realloc(inMsg.arr, inMsg.cap / bitsInABitVectorSmall * sizeof(inMsg.arr[0])); //// XXX
+				inMsg.arr = realloc(inMsg.arr, inMsg.cap / bitsInABitVectorSmall * sizeof(inMsg.arr[0]));
 			}
 		}
 
