@@ -173,9 +173,11 @@ bitVectorMoveInto(bitVector *out, bitVector *in, long i) {
 	i %= bitsInABitVectorSmall;
 	for (; y < l && w + 1 < ceilDiv(in->len); w++, y++) {
 		out->arr[y] = in->arr[w] >> i;
-		out->arr[y] |= in->arr[w + 1] << (bitsInABitVectorSmall - i);
+		out->arr[y] |= in->arr[w + 1] << ((bitsInABitVectorSmall - i) % bitsInABitVectorSmall);
 	}
-	out->arr[y] = in->arr[w] >> i;  // TODO: Not sure in correctness here.
+	if (y < l) {
+		out->arr[y] = in->arr[w] >> i;  // TODO: Not sure in correctness here.
+	}
 }
 
 // Shows the boolean argument as bits '0' or '1' on stdout.
@@ -325,7 +327,7 @@ main(int argc, char *argv[]) {
 	block.arr = malloc(sizeof(block.arr[0]) * ceilDiv(k));
 	for (i = 0; i < inMsg.len; i += k) {
 		// Copy k bits from inMsg to block.
-		memset(&(block.arr), 0, sizeof(block.arr[0]) * ceilDiv(k));
+		memset(block.arr, 0, sizeof(block.arr[0]) * ceilDiv(k));
 		bitVectorMoveInto(&block, &inMsg, i);
 
 		// Compute the output code word.
