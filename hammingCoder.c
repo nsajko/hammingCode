@@ -145,12 +145,13 @@ rowMulMat(bitVector *out, bitVector *row, bitVector *mat) {
 
 		// Add up the corresponding range of rows from mat into
 		// out.
+		printf("i=%ld j=%ld out->len=%ld mat[0].len=%ld row->len=%ld\n", i, j, out->len, mat[0].len, row->len);
 		long k;
 		for (k = i; k < j; k++) {
 			xor(out, &(mat[k]));
 		}
 
-		i += j;
+		i = j;
 	}
 }
 
@@ -183,7 +184,7 @@ bitVectorMoveInto(bitVector *out, bitVector *in, long i) {
 // Shows the boolean argument as bits '0' or '1' on stdout.
 static inline
 void
-printBool(int b) {
+printBool(unsigned long b) {
 	if (b) {
 		putchar('1');
 	} else {
@@ -275,38 +276,45 @@ main(int argc, char *argv[]) {
 	printf("\nEnter a message in bits (possibly separated by whitespace) to be Hamming coded using the chosen code parameters:\n\n");
 	enum {
 		// In bits.
-		initialInputMessageCapacity = 1UL << 13,
+		initialInputMessageCapacity = 1UL << 13, //// XXX DEBUGGING try a lower value than 1 << 13
 	};
 	bitVector inMsg = {0, initialInputMessageCapacity};
 	inMsg.arr = calloc(sizeof(inMsg.arr[0]), inMsg.cap / bitsInABitVectorSmall);
 	bitVectorSmall tmpBits = 0;
+	int done = 0 != 0;
 	for (;;) {
 		int c = fgetc(stdin);
 		if (c == '	' || c == ' ' || c == '\n') {
 			continue;
 		}
 		if (c != '0' && c != '1') {
-			break;
+			done = 0 == 0;
+		} else  {
+			c -= '0';
+	
+			// c is now either zero or one. Set or clear the
+			// corresponding bit accordingly.
+			tmpBits |= (unsigned long)c << (inMsg.len % bitsInABitVectorSmall);
+
+			inMsg.len++;
+	
+			if (inMsg.cap - 1 < inMsg.len) {
+				inMsg.cap <<= 1;
+				inMsg.arr = realloc(inMsg.arr, inMsg.cap / bitsInABitVectorSmall * sizeof(inMsg.arr[0])); //// XXX
+			}
 		}
 
-		c -= '0';
-
-		// c is now either zero or one. Set or clear the
-		// corresponding bit accordingly.
-		tmpBits |= (unsigned long)c << (inMsg.len % bitsInABitVectorSmall);
-
-		inMsg.len++;
-
-		if (inMsg.cap - 1 < inMsg.len) {
-			inMsg.cap <<= 1;
-			inMsg.arr = realloc(inMsg.arr, inMsg.cap / bitsInABitVectorSmall * sizeof(inMsg.arr[0]));
-		}
-
-		if (inMsg.len % bitsInABitVectorSmall == 0) {
+		if ((inMsg.len + 1) % bitsInABitVectorSmall == 0 || done) {
 			// Copy temporary bit storage to the backing array.
 			inMsg.arr[inMsg.len / bitsInABitVectorSmall] = tmpBits;
+			if (done) {
+				break;
+			}
+			tmpBits = 0;
+			//// XXX What if the user decides to exit the loop after this?
 		}
 	}
+	printf("%d\n", bitsInABitVectorSmall);
 	printBitVector(&inMsg);
 
 	// Make and show the code's generator matrix.
