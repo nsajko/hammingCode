@@ -115,13 +115,16 @@ xor(bitVector *out, bitVector *op) {
 // index i.
 static
 long
-countContiguous(bitVector *bV, long i, unsigned b) {
+countContiguous(bitVector *bV, long i, unsigned long b) {
 	long j;
 	bitVectorSmall s = 0;
 	if (b != 0) {
 		s = (bitVectorSmall)~0UL;
 	}
-	for (j = i; j < bV->len && bV->arr[j / bitsInABitVectorSmall] == s; j += bitsInABitVectorSmall) {}
+	for (j = i; j < bV->len && (bV->arr[j / bitsInABitVectorSmall] == s); j += bitsInABitVectorSmall) {} //// XXX Iterations sometimes happen here when they should not ... ?
+	if (bV->len < j) {
+		j = bV->len;
+	}
 	for (; j < bV->len &&
 			(b == (1 & (bV->arr[j / bitsInABitVectorSmall] >> (j % bitsInABitVectorSmall))))
 			; j++) {}
@@ -276,7 +279,7 @@ main(int argc, char *argv[]) {
 	printf("\nEnter a message in bits (possibly separated by whitespace) to be Hamming coded using the chosen code parameters:\n\n");
 	enum {
 		// In bits.
-		initialInputMessageCapacity = 1UL << 13, //// XXX DEBUGGING try a lower value than 1 << 13
+		initialInputMessageCapacity = 1UL << 13, //// XXX DEBUGGING try a lower value than 1UL << 13
 	};
 	bitVector inMsg = {0, initialInputMessageCapacity};
 	inMsg.arr = calloc(sizeof(inMsg.arr[0]), inMsg.cap / bitsInABitVectorSmall);
@@ -314,7 +317,6 @@ main(int argc, char *argv[]) {
 			//// XXX What if the user decides to exit the loop after this?
 		}
 	}
-	printf("%d\n", bitsInABitVectorSmall);
 	printBitVector(&inMsg);
 
 	// Make and show the code's generator matrix.
