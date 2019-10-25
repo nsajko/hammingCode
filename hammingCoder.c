@@ -9,9 +9,6 @@
 //
 // For simplicity, I ignored the possibility of heap allocation failing.
 
-// TODO: Some functions may be counterproductively specified as 'inline'.
-// TODO: Mark pointer parameters as const where possible.
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -104,7 +101,7 @@ makeGen(long n, long k) {
 // Performs bitwise exclusive-or between the op and out bit vectors.
 static inline
 void
-xor(bitVector *out, bitVector *op) {
+xor(bitVector *out, const bitVector *op) {
 	long i, l = ceilDiv(out->len);
 	for (i = 0; i < l; i++) {
 		out->arr[i] ^= op->arr[i];
@@ -115,7 +112,7 @@ xor(bitVector *out, bitVector *op) {
 // index i.
 static
 long
-countContiguous(bitVector *bV, long i, unsigned long b) {
+countContiguous(const bitVector *bV, long i, unsigned long b) {
 	long j;
 	bitVectorSmall s = 0;
 	if (b != 0) {
@@ -134,7 +131,7 @@ countContiguous(bitVector *bV, long i, unsigned long b) {
 // Multiplies the row-vector with the matrix. Out is expected to be zeroed.
 static inline
 void
-rowMulMat(bitVector *out, bitVector *row, bitVector *mat) {
+rowMulMat(bitVector *out, const bitVector *row, const bitVector *mat) {
 	// We operate by finding ranges of set bits in the row, prefixed
 	// by ranges of unset bits, and then adding up with XOR the
 	// corresponding rows from mat.
@@ -171,7 +168,7 @@ freeMat(bitVector *mat, long k) {
 // Moves a contiguous range of bits from in starting at index i to out.
 static inline
 void
-bitVectorMoveInto(bitVector *out, bitVector *in, long i) {
+bitVectorMoveInto(bitVector *out, const bitVector *in, long i) {
 	long w = i / bitsInABitVectorSmall, y = 0, l = ceilDiv(out->len);
 	i %= bitsInABitVectorSmall;
 	if (i != 0) {
@@ -203,7 +200,7 @@ printBool(unsigned long b) {
 // Shows the bit vector on stdout.
 static inline
 void
-printBitVector(bitVector *bV) {
+printBitVector(const bitVector *bV) {
 	// w is for "words", i is for bits.
 	long w, i, l = bV->len / bitsInABitVectorSmall;
 	for (w = 0; w < l; w++) {
@@ -220,7 +217,7 @@ printBitVector(bitVector *bV) {
 // Shows the array of bit vectors/rows on stdout (as a matrix).
 static inline
 void
-printMatrix(bitVector *m, long rows) {
+printMatrix(const bitVector *m, long rows) {
 	long r;
 	for (r = 0; r < rows; r++) {
 		printBitVector(&(m[r]));
@@ -284,7 +281,7 @@ main(int argc, char *argv[]) {
 	fprintf(stderr, "\nEnter a message in bits (possibly separated by whitespace) to be Hamming coded using the chosen code parameters:\n\n");
 	enum {
 		// In bits.
-		initialInputMessageCapacity = 1UL << 13, //// XXX DEBUGGING try a lower value than 1UL << 13
+		initialInputMessageCapacity = 1UL << 13,
 	};
 	bitVector inMsg = {0, initialInputMessageCapacity};
 	inMsg.arr = calloc(sizeof(inMsg.arr[0]), inMsg.cap / bitsInABitVectorSmall);
