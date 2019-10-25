@@ -278,10 +278,10 @@ main(int argc, char *argv[]) {
 		fprintf(stderr, "coder: wrong input for second argument (k), try %ld\n", correctK);
 		return 1;
 	}
-	printf("Linear block code [n = %ld, k = %ld]\ncode rate = R(K) = %g\n", n, k, (double)k / (double)n);
+	fprintf(stderr, "Linear block code [n = %ld, k = %ld]\ncode rate = R(K) = %g\n", n, k, (double)k / (double)n);
 
 	// Stdin input of source input message.
-	printf("\nEnter a message in bits (possibly separated by whitespace) to be Hamming coded using the chosen code parameters:\n\n");
+	fprintf(stderr, "\nEnter a message in bits (possibly separated by whitespace) to be Hamming coded using the chosen code parameters:\n\n");
 	enum {
 		// In bits.
 		initialInputMessageCapacity = 1UL << 13, //// XXX DEBUGGING try a lower value than 1UL << 13
@@ -326,7 +326,7 @@ main(int argc, char *argv[]) {
 
 	// Make and show the code's generator matrix.
 	bitVector *genMat = makeGen(n, k);
-	printf("\nThe generator matrix for the code:\n\n");
+	fprintf(stderr, "\nThe generator matrix for the code:\n\n");
 	printMatrix(genMat, k);
 
 	// Encode all of the source input string into codewords. The
