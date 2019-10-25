@@ -119,7 +119,7 @@ countContiguous(bitVector *bV, long i, unsigned long b) {
 	long j;
 	bitVectorSmall s = 0;
 	if (b != 0) {
-		s = (bitVectorSmall)~0UL;
+		s = ~s;
 	}
 	for (j = i; j < bV->len && (bV->arr[j / bitsInABitVectorSmall] == s); j += bitsInABitVectorSmall) {}
 	if (bV->len < j) {
@@ -320,22 +320,25 @@ main(int argc, char *argv[]) {
 
 	// The capacity struct field is unused here, so it is OK to set
 	// it to zero, although that is not the real capacity.
-	fprintf(stderr, "\nTo encode the entire source input string into codewords, we divide the input string into parts of k or less bits, where the last part's last bits are padded with zeros. Each input part is multiplied with the generator to produce the corresponding codeword.\n");
+	fprintf(stderr, "\nTo encode the entire source input string into codewords, we divide the input string into parts of k or less bits, where the last part's last bits are padded with zeros. Each input part is multiplied with the generator to produce the corresponding codeword.\n\n");
 	bitVector codeWord = {n, 0};
 	codeWord.arr = calloc(sizeof(codeWord.arr[0]), ceilDiv(n));
 	long i;
 	bitVector block = {k, 0};
-	block.arr = malloc(sizeof(block.arr[0]) * ceilDiv(k));
+	block.arr = calloc(sizeof(block.arr[0]), ceilDiv(k));
 	for (i = 0; i < inMsg.len; i += k) {
 		// Copy k bits from inMsg to block.
-		memset(block.arr, 0, sizeof(block.arr[0]) * ceilDiv(k));
 		bitVectorMoveInto(&block, &inMsg, i);
-		fprintf(stderr, "Input k bits: ");
+		fprintf(stderr, "Input k=%ld bits: ", k);
 		printBitVector(&block);
 
 		// Compute the output code word.
 		rowMulMat(&codeWord, &block, genMat);
 		printBitVector(&codeWord);
+
+		// Clear the bit vectors for the next code word.
+		memset(block.arr, 0, sizeof(block.arr[0]) * ceilDiv(k));
+		memset(codeWord.arr, 0, sizeof(codeWord.arr[0]) * ceilDiv(n));
 	}
 
 	// Deallocate memory.
