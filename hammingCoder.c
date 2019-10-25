@@ -312,9 +312,9 @@ main(int argc, char *argv[]) {
 			}
 		}
 
-		if ((inMsg.len + 1) % bitsInABitVectorSmall == 0 || done) {
+		if (inMsg.len % bitsInABitVectorSmall == 0 || done) {
 			// Copy temporary bit storage to the backing array.
-			inMsg.arr[inMsg.len / bitsInABitVectorSmall] = tmpBits;
+			inMsg.arr[(inMsg.len - 1) / bitsInABitVectorSmall] = tmpBits;
 			if (done) {
 				break;
 			}
