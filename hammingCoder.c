@@ -288,38 +288,26 @@ main(int argc, char *argv[]) {
 	};
 	bitVector inMsg = {0, initialInputMessageCapacity};
 	inMsg.arr = calloc(sizeof(inMsg.arr[0]), inMsg.cap / bitsInABitVectorSmall);
-	bitVectorSmall tmpBits = 0;
-	int done = 0 != 0;
 	for (;;) {
 		int c = fgetc(stdin);
 		if (c == '	' || c == ' ' || c == '\n') {
 			continue;
 		}
 		if (c != '0' && c != '1') {
-			done = 0 == 0;
-		} else  {
-			c -= '0';
-	
-			// c is now either zero or one. Set or clear the
-			// corresponding bit accordingly.
-			tmpBits |= (bitVectorSmall)c << (inMsg.len % bitsInABitVectorSmall);
-
-			inMsg.len++;
-	
-			if (inMsg.cap - 1 < inMsg.len) {
-				inMsg.cap <<= 1;
-				inMsg.arr = realloc(inMsg.arr, inMsg.cap / bitsInABitVectorSmall * sizeof(inMsg.arr[0]));
-			}
+			break;
 		}
 
-		if (inMsg.len % bitsInABitVectorSmall == 0 || done) {
-			// Copy temporary bit storage to the backing array.
-			inMsg.arr[(inMsg.len - 1) / bitsInABitVectorSmall] = tmpBits;
-			if (done) {
-				break;
-			}
-			tmpBits = 0;
-			//// XXX What if the user decides to exit the loop after this?
+		c -= '0';
+
+		// c is now either zero or one. Set or clear the
+		// corresponding bit accordingly.
+		inMsg.arr[inMsg.len / bitsInABitVectorSmall] |= (bitVectorSmall)c << (inMsg.len % bitsInABitVectorSmall);
+
+		inMsg.len++;
+
+		if (inMsg.cap - 1 < inMsg.len) {
+			inMsg.cap <<= 1;
+			inMsg.arr = realloc(inMsg.arr, inMsg.cap / bitsInABitVectorSmall * sizeof(inMsg.arr[0]));
 		}
 	}
 	printBitVector(&inMsg);
