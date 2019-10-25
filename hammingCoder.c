@@ -310,6 +310,7 @@ main(int argc, char *argv[]) {
 			inMsg.arr = realloc(inMsg.arr, inMsg.cap / bitsInABitVectorSmall * sizeof(inMsg.arr[0]));
 		}
 	}
+	fprintf(stderr, "\nInput source message:\n");
 	printBitVector(&inMsg);
 
 	// Make and show the code's generator matrix.
@@ -317,12 +318,9 @@ main(int argc, char *argv[]) {
 	fprintf(stderr, "\nThe generator matrix for the code:\n\n");
 	printMatrix(genMat, k);
 
-	// Encode all of the source input string into codewords. The
-	// possible arbitrary bits of the possible undersized last
-	// block are padded with zero bits.
-	//
 	// The capacity struct field is unused here, so it is OK to set
 	// it to zero, although that is not the real capacity.
+	fprintf(stderr, "\nTo encode the entire source input string into codewords, we divide the input string into parts of k or less bits, where the last part's last bits are padded with zeros. Each input part is multiplied with the generator to produce the corresponding codeword.\n");
 	bitVector codeWord = {n, 0};
 	codeWord.arr = calloc(sizeof(codeWord.arr[0]), ceilDiv(n));
 	long i;
@@ -332,6 +330,8 @@ main(int argc, char *argv[]) {
 		// Copy k bits from inMsg to block.
 		memset(block.arr, 0, sizeof(block.arr[0]) * ceilDiv(k));
 		bitVectorMoveInto(&block, &inMsg, i);
+		fprintf(stderr, "Input k bits: ");
+		printBitVector(&block);
 
 		// Compute the output code word.
 		rowMulMat(&codeWord, &block, genMat);
