@@ -1,5 +1,7 @@
 // Copyright 2019 Neven Sajko. All rights reserved.
-
+//
+// https://github.com/nsajko/hammingCode
+//
 // A Hamming code coder.
 //
 // A generator matrix approach is used as an optimization for large
@@ -169,21 +171,24 @@ freeMat(bitVector *mat, long k) {
 static inline
 void
 bitVectorMoveInto(bitVector *out, const bitVector *in, long i) {
-	long w = i / bitsInABitVectorSmall, y = 0, l = ceilDiv(out->len);
+	long w = i / bitsInABitVectorSmall, y = 0, ly = ceilDiv(out->len), lw = ceilDiv(in->len);
 	i %= bitsInABitVectorSmall;
 	if (i != 0) {
-		for (; y < l && w + 1 < ceilDiv(in->len); w++, y++) {
+		for (; y < ly && w + 1 < lw; w++, y++) {
 			out->arr[y] = in->arr[w] >> i;
 			out->arr[y] |= in->arr[w + 1] << ((bitsInABitVectorSmall - i) % bitsInABitVectorSmall);
 		}
-		if (y < l) {
-			out->arr[y] = in->arr[w] >> i;  // TODO: Not sure in correctness here.
+		if (y < ly) {
+			out->arr[y] = in->arr[w] >> i;
 		}
 	} else {
-		for (; y < l && w < ceilDiv(in->len); w++, y++) {
+		for (; y < ly && w < lw; w++, y++) {
 			out->arr[y] = in->arr[w];
 		}
 	}
+	i = out->len % bitsInABitVectorSmall;
+	ly--;
+	out->arr[ly] = (out->arr[ly] << i) >> i;
 }
 
 // Shows the boolean argument as bits '0' or '1' on stdout.
@@ -275,7 +280,7 @@ main(int argc, char *argv[]) {
 		fprintf(stderr, "coder: wrong input for second argument (k), try %ld\n", correctK);
 		return 1;
 	}
-	fprintf(stderr, "Linear block code [n = %ld, k = %ld]\ncode rate = R(K) = %g\n", n, k, (double)k / (double)n);
+	fprintf(stderr, "Linear block code [n = %ld, k = %ld] (n = code word length) (k = number of source bits in each code word)\ncode rate = R(K) = %g\n", n, k, (double)k / (double)n);
 
 	// Stdin input of source input message.
 	fprintf(stderr, "\nEnter a message in bits (possibly separated by whitespace) to be Hamming coded using the chosen code parameters:\n\n");
@@ -324,9 +329,13 @@ main(int argc, char *argv[]) {
 	bitVector block = {k, 0};
 	block.arr = calloc(sizeof(block.arr[0]), ceilDiv(k));
 	for (i = 0; i < inMsg.len; i += k) {
+		if (inMsg.len - i < block.len) {
+			block.len = inMsg.len - i;
+		}
+
 		// Copy k bits from inMsg to block.
 		bitVectorMoveInto(&block, &inMsg, i);
-		fprintf(stderr, "Input k=%ld bits: ", k);
+		fprintf(stderr, "Input %4ld bits: ", block.len);
 		printBitVector(&block);
 
 		// Compute the output code word.
@@ -334,7 +343,7 @@ main(int argc, char *argv[]) {
 		printBitVector(&codeWord);
 
 		// Clear the bit vectors for the next code word.
-		memset(block.arr, 0, sizeof(block.arr[0]) * ceilDiv(k));
+		memset(block.arr, 0, sizeof(block.arr[0]) * ceilDiv(block.len));
 		memset(codeWord.arr, 0, sizeof(codeWord.arr[0]) * ceilDiv(n));
 	}
 
