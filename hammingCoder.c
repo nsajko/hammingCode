@@ -267,7 +267,7 @@ int
 main(int argc, char *argv[]) {
 	// Handle program arguments (argv).
 	if (argc != 1 + 2) {
-		fprintf(stderr, "coder: wrong number of arguments\n");
+		fprintf(stderr, "coder: wrong number of arguments, start the program with two arguments, both natural numbers\n");
 		return 1;
 	}
 	long n = lexDecimalASCII(argv[1]);
