@@ -292,7 +292,7 @@ main(int argc, char *argv[]) {
 	inMsg.arr = calloc(sizeof(inMsg.arr[0]), inMsg.cap / bitsInABitVectorSmall);
 	for (;;) {
 		int c = fgetc(stdin);
-		if (c == '	' || c == ' ' || c == '\n') {
+		if (c == '	' || c == ' ' || c == '\n' || c == '\r') {
 			continue;
 		}
 		if (c != '0' && c != '1') {
