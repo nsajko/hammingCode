@@ -117,6 +117,9 @@ xor(bitVector *out, const bitVector *op) {
 static
 long
 countContiguous(const bitVector *bV, long i, unsigned long b) {
+	// The first loop is an optimization for cases where a
+	// bitVectorSmall range consists of either 0UL or ~0UL,
+	// depending on b.
 	long j;
 	bitVectorSmall s = 0;
 	if (b != 0) {
