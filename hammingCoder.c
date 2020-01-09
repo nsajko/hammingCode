@@ -33,19 +33,105 @@ enum {
 	bitsInABitVectorSmall = bitsInAByte * sizeof(bitVectorSmall),
 };
 
+// Returns ceiling(n / bitsInABitVectorSmall).
+static inline
+long
+ceilDiv(long n) {
+	return (n - 1) / bitsInABitVectorSmall + 1;
+}
+
+// Performs bitwise exclusive-or between the op and out bit vectors.
+static inline
+void
+xor(bitVector *out, const bitVector *op) {
+	long i, l = ceilDiv(out->len);
+	for (i = 0; i < l; i++) {
+		out->arr[i] ^= op->arr[i];
+	}
+}
+
+// Counts the number of contiguous bits b in the bit vector, starting at
+// index i.
+static
+long
+countContiguous(const bitVector *bV, long i, unsigned long b) {
+	// The first loop is an optimization for cases where a
+	// bitVectorSmall range consists of either 0UL or ~0UL,
+	// depending on b.
+	long j;
+	bitVectorSmall s = 0;
+	if (b != 0) {
+		s = ~s;
+	}
+	for (j = i; j < bV->len && (bV->arr[j / bitsInABitVectorSmall] == s); j += bitsInABitVectorSmall) {}
+	if (bV->len < j) {
+		j = bV->len;
+	}
+	for (; j < bV->len &&
+			(b == (1 & (bV->arr[j / bitsInABitVectorSmall] >> (j % bitsInABitVectorSmall))))
+			; j++) {}
+	return j - i;
+}
+
+// Moves a contiguous range of bits from in starting at index i to out.
+static inline
+void
+bitVectorMoveInto(bitVector *out, const bitVector *in, long i) {
+	long w = i / bitsInABitVectorSmall, y = 0, ly = ceilDiv(out->len), lw = ceilDiv(in->len);
+	i %= bitsInABitVectorSmall;
+	if (i != 0) {
+		for (; y < ly && w + 1 < lw; w++, y++) {
+			out->arr[y] = in->arr[w] >> i;
+			out->arr[y] |=
+				in->arr[w + 1] << ((bitsInABitVectorSmall - i) % bitsInABitVectorSmall);
+		}
+		if (y < ly) {
+			out->arr[y] = in->arr[w] >> i;
+		}
+	} else {
+		for (; y < ly && w < lw; w++, y++) {
+			out->arr[y] = in->arr[w];
+		}
+	}
+	i = out->len % bitsInABitVectorSmall;
+	ly--;
+	out->arr[ly] = (out->arr[ly] << i) >> i;
+}
+
+// Shows the boolean argument as bits '0' or '1' on stdout.
+static inline
+void
+printBool(unsigned long b) {
+	if (b) {
+		putchar('1');
+	} else {
+		putchar('0');
+	}
+}
+
+// Shows the bit vector on stdout.
+static inline
+void
+printBitVector(const bitVector *bV) {
+	// w is for "words", i is for bits.
+	long w, i, l = bV->len / bitsInABitVectorSmall;
+	for (w = 0; w < l; w++) {
+		for (i = 0; i < bitsInABitVectorSmall; i++) {
+			printBool((1UL << i) & bV->arr[w]);
+		}
+	}
+	for (i = 0; i < bV->len % bitsInABitVectorSmall; i++) {
+		printBool((1UL << i) & bV->arr[w]);
+	}
+	printf("\n");
+}
+
 // Is l a power of two? Or, equivalently, does l have a set bit count
 // (population count/popcount) of one?
 static inline
 int
 isPowerOfTwo(long l) {
 	return (l & (l - 1)) == 0;
-}
-
-// Returns ceiling(n / bitsInABitVectorSmall).
-static inline
-long
-ceilDiv(long n) {
-	return (n - 1) / bitsInABitVectorSmall + 1;
 }
 
 // See below.
@@ -102,39 +188,6 @@ makeGen(long n, long k) {
 	return r;
 }
 
-// Performs bitwise exclusive-or between the op and out bit vectors.
-static inline
-void
-xor(bitVector *out, const bitVector *op) {
-	long i, l = ceilDiv(out->len);
-	for (i = 0; i < l; i++) {
-		out->arr[i] ^= op->arr[i];
-	}
-}
-
-// Counts the number of contiguous bits b in the bit vector, starting at
-// index i.
-static
-long
-countContiguous(const bitVector *bV, long i, unsigned long b) {
-	// The first loop is an optimization for cases where a
-	// bitVectorSmall range consists of either 0UL or ~0UL,
-	// depending on b.
-	long j;
-	bitVectorSmall s = 0;
-	if (b != 0) {
-		s = ~s;
-	}
-	for (j = i; j < bV->len && (bV->arr[j / bitsInABitVectorSmall] == s); j += bitsInABitVectorSmall) {}
-	if (bV->len < j) {
-		j = bV->len;
-	}
-	for (; j < bV->len &&
-			(b == (1 & (bV->arr[j / bitsInABitVectorSmall] >> (j % bitsInABitVectorSmall))))
-			; j++) {}
-	return j - i;
-}
-
 // Multiplies the row-vector with the matrix. Out is expected to be zeroed.
 static inline
 void
@@ -170,59 +223,6 @@ freeMat(bitVector *mat, long k) {
 		free(mat[i].arr);
 	}
 	free(mat);
-}
-
-// Moves a contiguous range of bits from in starting at index i to out.
-static inline
-void
-bitVectorMoveInto(bitVector *out, const bitVector *in, long i) {
-	long w = i / bitsInABitVectorSmall, y = 0, ly = ceilDiv(out->len), lw = ceilDiv(in->len);
-	i %= bitsInABitVectorSmall;
-	if (i != 0) {
-		for (; y < ly && w + 1 < lw; w++, y++) {
-			out->arr[y] = in->arr[w] >> i;
-			out->arr[y] |=
-				in->arr[w + 1] << ((bitsInABitVectorSmall - i) % bitsInABitVectorSmall);
-		}
-		if (y < ly) {
-			out->arr[y] = in->arr[w] >> i;
-		}
-	} else {
-		for (; y < ly && w < lw; w++, y++) {
-			out->arr[y] = in->arr[w];
-		}
-	}
-	i = out->len % bitsInABitVectorSmall;
-	ly--;
-	out->arr[ly] = (out->arr[ly] << i) >> i;
-}
-
-// Shows the boolean argument as bits '0' or '1' on stdout.
-static inline
-void
-printBool(unsigned long b) {
-	if (b) {
-		putchar('1');
-	} else {
-		putchar('0');
-	}
-}
-
-// Shows the bit vector on stdout.
-static inline
-void
-printBitVector(const bitVector *bV) {
-	// w is for "words", i is for bits.
-	long w, i, l = bV->len / bitsInABitVectorSmall;
-	for (w = 0; w < l; w++) {
-		for (i = 0; i < bitsInABitVectorSmall; i++) {
-			printBool((1UL << i) & bV->arr[w]);
-		}
-	}
-	for (i = 0; i < bV->len % bitsInABitVectorSmall; i++) {
-		printBool((1UL << i) & bV->arr[w]);
-	}
-	printf("\n");
 }
 
 // Shows the array of bit vectors/rows on stdout (as a matrix).
