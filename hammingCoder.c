@@ -86,14 +86,16 @@ makeGen(long n, long k) {
 				// We check columns that have the pow
 				// bit set.
 				if (i & pow) {
-					r[hamm(i)].arr[j / bitsInABitVectorSmall] |= 1UL << (j % bitsInABitVectorSmall);
+					r[hamm(i)].arr[j / bitsInABitVectorSmall] |=
+						1UL << (j % bitsInABitVectorSmall);
 				}
 			}
 			pow <<= 1;
 		} else {
 			// j + 1 is not a power of two. Set the bit
 			// r[row=nonPowerOfTwoColumns, column=j].
-			r[nonPowerOfTwoColumns].arr[j / bitsInABitVectorSmall] |= 1UL << (j % bitsInABitVectorSmall);
+			r[nonPowerOfTwoColumns].arr[j / bitsInABitVectorSmall]
+				|= 1UL << (j % bitsInABitVectorSmall);
 			nonPowerOfTwoColumns++;
 		}
 	}
@@ -176,7 +178,8 @@ bitVectorMoveInto(bitVector *out, const bitVector *in, long i) {
 	if (i != 0) {
 		for (; y < ly && w + 1 < lw; w++, y++) {
 			out->arr[y] = in->arr[w] >> i;
-			out->arr[y] |= in->arr[w + 1] << ((bitsInABitVectorSmall - i) % bitsInABitVectorSmall);
+			out->arr[y] |=
+				in->arr[w + 1] << ((bitsInABitVectorSmall - i) % bitsInABitVectorSmall);
 		}
 		if (y < ly) {
 			out->arr[y] = in->arr[w] >> i;
@@ -267,12 +270,15 @@ int
 main(int argc, char *argv[]) {
 	// Handle program arguments (argv).
 	if (argc != 1 + 2) {
-		fprintf(stderr, "coder: wrong number of arguments, start the program with two arguments, both natural numbers\n");
+		fprintf(stderr, "coder: wrong number of arguments, start the program with two arguments, "
+				"both natural numbers\n");
 		return 1;
 	}
 	long n = lexDecimalASCII(argv[1]);
 	if (isPowerOfTwo(n)) {
-		fprintf(stderr, "coder: wrong input for first argument (n). n can not be zero, because no code words would exist in that case; and also it can not be a power of two, because a parity bit would be wasted in that case as the last bit\n");
+		fprintf(stderr, "coder: wrong input for first argument (n). n can not be zero, because no "
+				"code words would exist in that case; and also it can not be a power of "
+				"two, because a parity bit would be wasted in that case as the last bit\n");
 		return 1;
 	}
 	long k = lexDecimalASCII(argv[2]), correctK = hammingK(n);
@@ -280,10 +286,12 @@ main(int argc, char *argv[]) {
 		fprintf(stderr, "coder: wrong input for second argument (k), try %ld\n", correctK);
 		return 1;
 	}
-	fprintf(stderr, "Linear block code [n = %ld, k = %ld] (n = code word length) (k = number of source bits in each code word)\ncode rate = R(K) = %g\n", n, k, (double)k / (double)n);
+	fprintf(stderr, "Linear block code [n = %ld, k = %ld] (n = code word length) (k = number of source "
+			"bits in each code word)\ncode rate = R(K) = %g\n", n, k, (double)k / (double)n);
 
 	// Stdin input of source input message.
-	fprintf(stderr, "\nEnter a message in bits (possibly separated by whitespace) to be Hamming coded using the chosen code parameters:\n\n");
+	fprintf(stderr, "\nEnter a message in bits (possibly separated by whitespace) to be Hamming coded "
+			"using the chosen code parameters:\n\n");
 	enum {
 		// In bits.
 		initialInputMessageCapacity = 1UL << 13,
@@ -303,13 +311,15 @@ main(int argc, char *argv[]) {
 
 		// c is now either zero or one. Set or clear the
 		// corresponding bit accordingly.
-		inMsg.arr[inMsg.len / bitsInABitVectorSmall] |= (bitVectorSmall)c << (inMsg.len % bitsInABitVectorSmall);
+		inMsg.arr[inMsg.len / bitsInABitVectorSmall] |=
+			(bitVectorSmall)c << (inMsg.len % bitsInABitVectorSmall);
 
 		inMsg.len++;
 
 		if (inMsg.cap - 1 < inMsg.len) {
 			inMsg.cap <<= 1;
-			inMsg.arr = realloc(inMsg.arr, inMsg.cap / bitsInABitVectorSmall * sizeof(inMsg.arr[0]));
+			inMsg.arr =
+				realloc(inMsg.arr, inMsg.cap / bitsInABitVectorSmall * sizeof(inMsg.arr[0]));
 		}
 	}
 	fprintf(stderr, "\nInput source message:\n");
@@ -322,7 +332,10 @@ main(int argc, char *argv[]) {
 
 	// The capacity struct field is unused here, so it is OK to set
 	// it to zero, although that is not the real capacity.
-	fprintf(stderr, "\nTo encode the entire source input string into codewords, we divide the input string into parts of k or less bits, where the last part's last bits are padded with zeros. Each input part is multiplied with the generator to produce the corresponding codeword.\n\n");
+	fprintf(stderr, "\nTo encode the entire source input string into codewords, we divide the input "
+			"string into parts of k or less bits, where the last part's last bits are padded "
+			"with zeros. Each input part is multiplied with the generator to produce the "
+			"corresponding codeword.\n\n");
 	bitVector codeWord = {n, 0};
 	codeWord.arr = calloc(sizeof(codeWord.arr[0]), ceilDiv(n));
 	long i;
