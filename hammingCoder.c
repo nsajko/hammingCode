@@ -260,15 +260,6 @@ lexDecimalASCII(const char *s) {
 	return r;
 }
 
-// Floor of the binary logarithm.
-static inline
-long
-floorLog2(long n) {
-	long r = 0;
-	for (; (n = (unsigned long)n >> 1); r++) {}
-	return r;
-}
-
 int
 main(int argc, char *argv[]) {
 	// Handle program arguments (argv).
