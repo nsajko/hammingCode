@@ -82,7 +82,7 @@ bitVectorAlloc(bitVector *a, long cap) {
 	a->arr = calloc(ceilDiv(cap), sizeof(a->arr[0]));
 }
 
-static inline
+static
 void
 bitVectorRealloc(bitVector *a, long cap) {
 	bitVectorSmall *tmp = realloc(a->arr, ceilDiv(cap) * sizeof(a->arr[0]));
@@ -105,7 +105,7 @@ bitVectorFree(bitVector *a) {
 }
 
 // Performs bitwise exclusive-or between the op and out bit vectors.
-static inline
+static
 void
 bitVectorXOR(bitVector *out, const bitVector *op) {
 	long i, l = ceilDiv(out->len);
@@ -138,7 +138,7 @@ bitVectorCountContiguous(const bitVector *bV, long i, unsigned long b) {
 }
 
 // Moves a contiguous range of bits from in starting at index i to out.
-static inline
+static
 void
 bitVectorMoveInto(bitVector *out, const bitVector *in, long i) {
 	long w = i / bitsInABitVectorSmall, y = 0, ly = ceilDiv(out->len), lw = ceilDiv(in->len);
@@ -174,7 +174,7 @@ printBool(unsigned long b) {
 }
 
 // Shows the bit vector on stdout.
-static inline
+static
 void
 bitVectorPrint(const bitVector *bV) {
 	// w is for "words", i is for bits.
