@@ -355,7 +355,7 @@ main(int argc, char *argv[]) {
 	fflush(stderr);
 	enum {
 		// In bits.
-		initialInputMessageCapacity = 1UL << 13,
+		initialInputMessageCapacity = 1UL << 4,
 	};
 	bitVector inMsg;
 	bitVectorAlloc(&inMsg, initialInputMessageCapacity);
