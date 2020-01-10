@@ -252,10 +252,12 @@ makeGen(long n, long k) {
 	return r;
 }
 
-// Multiplies the row-vector with the matrix. Out is expected to be zeroed.
+// Multiplies the row-vector with the matrix.
 static inline
 void
 rowMulMat(bitVector *out, const bitVector *row, const bitVector *mat) {
+	bitVectorClear(out);
+
 	// We operate by finding ranges of set bits in the row, prefixed
 	// by ranges of unset bits, and then adding up with XOR the
 	// corresponding rows from mat.
@@ -425,7 +427,6 @@ main(int argc, char *argv[]) {
 
 		// Clear the bit vectors for the next code word.
 		bitVectorClear(&block);
-		bitVectorClear(&codeWord);
 	}
 
 	// Deallocate memory.
