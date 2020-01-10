@@ -107,7 +107,7 @@ bitVectorFree(bitVector *a) {
 // Performs bitwise exclusive-or between the op and out bit vectors.
 static inline
 void
-xor(bitVector *out, const bitVector *op) {
+bitVectorXOR(bitVector *out, const bitVector *op) {
 	long i, l = ceilDiv(out->len);
 	for (i = 0; i < l; i++) {
 		out->arr[i] ^= op->arr[i];
@@ -118,7 +118,7 @@ xor(bitVector *out, const bitVector *op) {
 // index i.
 static
 long
-countContiguous(const bitVector *bV, long i, unsigned long b) {
+bitVectorCountContiguous(const bitVector *bV, long i, unsigned long b) {
 	// The first loop is an optimization for cases where a
 	// bitVectorSmall range consists of either 0UL or ~0UL,
 	// depending on b.
@@ -176,7 +176,7 @@ printBool(unsigned long b) {
 // Shows the bit vector on stdout.
 static inline
 void
-printBitVector(const bitVector *bV) {
+bitVectorPrint(const bitVector *bV) {
 	// w is for "words", i is for bits.
 	long w, i, l = bV->len / bitsInABitVectorSmall;
 	for (w = 0; w < l; w++) {
@@ -262,16 +262,16 @@ rowMulMat(bitVector *out, const bitVector *row, const bitVector *mat) {
 	long i;
 	for (i = 0; i < row->len;) {
 		// Skip range of unset bits.
-		i += countContiguous(row, i, 0);
+		i += bitVectorCountContiguous(row, i, 0);
 
 		// Find the range of set bits.
-		long j = i + countContiguous(row, i, 1);
+		long j = i + bitVectorCountContiguous(row, i, 1);
 
 		// Add up the corresponding range of rows from mat into
 		// out.
 		long k;
 		for (k = i; k < j; k++) {
-			xor(out, &(mat[k]));
+			bitVectorXOR(out, &(mat[k]));
 		}
 
 		i = j;
@@ -295,7 +295,7 @@ void
 printMatrix(const bitVector *m, long rows) {
 	long r;
 	for (r = 0; r < rows; r++) {
-		printBitVector(&(m[r]));
+		bitVectorPrint(&(m[r]));
 	}
 	printf("\n");
 }
@@ -379,7 +379,7 @@ main(int argc, char *argv[]) {
 		}
 	}
 	fprintf(stderr, "\nInput source message:\n");
-	printBitVector(&inMsg);
+	bitVectorPrint(&inMsg);
 
 	// Make and show the code's generator matrix.
 	bitVector *genMat = makeGen(n, k);
@@ -405,11 +405,11 @@ main(int argc, char *argv[]) {
 		// Copy k bits from inMsg to block.
 		bitVectorMoveInto(&block, &inMsg, i);
 		fprintf(stderr, "Input %4ld bits: ", block.len);
-		printBitVector(&block);
+		bitVectorPrint(&block);
 
 		// Compute the output code word.
 		rowMulMat(&codeWord, &block, genMat);
-		printBitVector(&codeWord);
+		bitVectorPrint(&codeWord);
 
 		// Clear the bit vectors for the next code word.
 		bitVectorClear(&block);
