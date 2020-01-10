@@ -350,6 +350,7 @@ main(int argc, char *argv[]) {
 	// Stdin input of source input message.
 	fprintf(stderr, "\nEnter a message in bits (possibly separated by whitespace) to be Hamming coded "
 			"using the chosen code parameters:\n\n");
+	fflush(stderr);
 	enum {
 		// In bits.
 		initialInputMessageCapacity = 1UL << 13,
@@ -379,17 +380,23 @@ main(int argc, char *argv[]) {
 		}
 	}
 	fprintf(stderr, "\nInput source message:\n");
+	fflush(stderr);
 	bitVectorPrint(&inMsg);
+	fflush(stdout);
 
 	// Make and show the code's generator matrix.
 	bitVector *genMat = makeGen(n, k);
 	fprintf(stderr, "\nThe generator matrix for the code:\n\n");
+	fflush(stderr);
 	printMatrix(genMat, k);
+	printf("\n");
+	fflush(stdout);
 
-	fprintf(stderr, "\nTo encode the entire source input string into codewords, we divide the input "
+	fprintf(stderr, "To encode the entire source input string into codewords, we divide the input "
 			"string into parts of k or less bits, where the last part's last bits are padded "
 			"with zeros. Each input part is multiplied with the generator to produce the "
 			"corresponding codeword.\n\n");
+	fflush(stderr);
 	bitVector codeWord;
 	bitVectorAlloc(&codeWord, n);
 	codeWord.len = n;
@@ -405,11 +412,16 @@ main(int argc, char *argv[]) {
 		// Copy k bits from inMsg to block.
 		bitVectorMoveInto(&block, &inMsg, i);
 		fprintf(stderr, "Input %4ld bits: ", block.len);
+		fflush(stderr);
 		bitVectorPrint(&block);
+		fflush(stdout);
 
 		// Compute the output code word.
 		rowMulMat(&codeWord, &block, genMat);
+		fprintf(stderr, "Output: ");
+		fflush(stderr);
 		bitVectorPrint(&codeWord);
+		fflush(stdout);
 
 		// Clear the bit vectors for the next code word.
 		bitVectorClear(&block);
