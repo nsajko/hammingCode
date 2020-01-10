@@ -11,6 +11,8 @@
 //
 // For simplicity, I ignored the possibility of heap allocation failing.
 
+#include <stdint.h>
+#include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -22,7 +24,13 @@
 
 ///////////////////////////////////////////////////////////////
 
-typedef unsigned long bitVectorSmall;
+typedef unsigned
+#ifdef FUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION
+char
+#else
+long
+#endif
+bitVectorSmall;
 typedef struct {
 	// Length and backing storage capacity, both in bits.
 	long len, cap;
@@ -34,6 +42,10 @@ typedef struct {
 } bitVector;
 
 enum {
+	// Configurable capacity of the initial input message in bits.
+	// Increase for a slight performance boost.
+	initialInputMessageCapacity = 1UL << 4,
+
 	// Just for clarity, probably not configurable.
 	bitsInAByte = 8,
 
@@ -91,7 +103,7 @@ bitVectorRealloc(bitVector *a, long cap) {
 	} else {
 		long d = cap - a->cap;
 		if (0 < d) {
-			memset(&(a->arr[a->cap]), 0, d / bitsInAByte);
+			memset(&tmp[a->cap / bitsInABitVectorSmall], 0, d / bitsInAByte);
 		}
 		a->cap = cap;
 	}
@@ -188,6 +200,34 @@ bitVectorPrint(const bitVector *bV) {
 		printBool((1UL << i) & bV->arr[w]);
 	}
 	printf("\n");
+}
+
+static
+void
+bitVectorFillWithInput(bitVector *a, int (*getInput)(void)) {
+	bitVectorAlloc(a, initialInputMessageCapacity);
+	for (;;) {
+		int c = getInput();
+		if (c == '	' || c == ' ' || c == '\n' || c == '\r') {
+			continue;
+		}
+		if (c != '0' && c != '1') {
+			break;
+		}
+
+		c -= '0';
+
+		// c is now either zero or one. Set or clear the
+		// corresponding bit accordingly.
+		bitVectorSet(a, c, a->len);
+
+		a->len++;
+
+		long cap = bitVectorCap(a);
+		if (cap - 1 < a->len) {
+			bitVectorRealloc(a, cap << 1);
+		}
+	}
 }
 
 ///////////////////////////////////////////////////////////////
@@ -291,6 +331,91 @@ freeMat(bitVector *mat, long k) {
 	free(mat);
 }
 
+#ifdef FUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION
+
+// This is the fuzzing code, used for finding defects in the main code.
+// See https://llvm.org/docs/LibFuzzer.html
+
+static struct {
+	long cap;
+	const uint8_t *arr;
+} fakeGetStorage;
+
+static
+int
+fakeGet(void) {
+	if (fakeGetStorage.cap == 0) {
+		return EOF;
+	}
+	fakeGetStorage.cap--;
+	fakeGetStorage.arr++;
+	return fakeGetStorage.arr[-1];
+}
+
+int
+LLVMFuzzerTestOneInput(const uint8_t *data, size_t size) {
+	if (size < 3 * sizeof(uint8_t)) {
+		return 0;
+	}
+
+	uint8_t nByte, kByte;
+	memcpy(&nByte, data, sizeof(nByte));
+	data += sizeof(nByte);
+	size -= sizeof(nByte);
+	memcpy(&kByte, data, sizeof(kByte));
+	data += sizeof(kByte);
+	size -= sizeof(kByte);
+
+	long n = nByte, k = kByte;
+
+	if (k != hammingK(n)) {
+		return 0;
+	}
+
+	// Initialize fakeGet.
+	fakeGetStorage.cap = size;
+	fakeGetStorage.arr = data;
+
+	bitVector inMsg;
+	bitVectorFillWithInput(&inMsg, fakeGet);
+
+	bitVector *genMat = makeGen(n, k);
+
+	bitVector codeWord;
+	bitVectorAlloc(&codeWord, n);
+	codeWord.len = n;
+	long i;
+	bitVector block;
+	bitVectorAlloc(&block, k);
+	block.len = k;
+	for (i = 0; i < inMsg.len; i += k) {
+		if (inMsg.len - i < block.len) {
+			block.len = inMsg.len - i;
+		}
+
+		bitVectorMoveInto(&block, &inMsg, i);
+
+		rowMulMat(&codeWord, &block, genMat);
+
+		bitVectorClear(&block);
+	}
+
+	bitVectorFree(&block);
+	bitVectorFree(&codeWord);
+	freeMat(genMat, k);
+	bitVectorFree(&inMsg);
+
+	return 0;
+}
+
+#else
+
+static
+int
+fgetcStdin(void) {
+	return fgetc(stdin);
+}
+
 // Shows the array of bit vectors/rows on stdout (as a matrix).
 static inline
 void
@@ -353,34 +478,8 @@ main(int argc, char *argv[]) {
 	fprintf(stderr, "\nEnter a message in bits (possibly separated by whitespace) to be Hamming coded "
 			"using the chosen code parameters:\n\n");
 	fflush(stderr);
-	enum {
-		// In bits.
-		initialInputMessageCapacity = 1UL << 4,
-	};
 	bitVector inMsg;
-	bitVectorAlloc(&inMsg, initialInputMessageCapacity);
-	for (;;) {
-		int c = fgetc(stdin);
-		if (c == '	' || c == ' ' || c == '\n' || c == '\r') {
-			continue;
-		}
-		if (c != '0' && c != '1') {
-			break;
-		}
-
-		c -= '0';
-
-		// c is now either zero or one. Set or clear the
-		// corresponding bit accordingly.
-		bitVectorSet(&inMsg, c, inMsg.len);
-
-		inMsg.len++;
-
-		long cap = bitVectorCap(&inMsg);
-		if (cap - 1 < inMsg.len) {
-			bitVectorRealloc(&inMsg, cap << 1);
-		}
-	}
+	bitVectorFillWithInput(&inMsg, fgetcStdin);
 	fprintf(stderr, "\nInput source message:\n");
 	fflush(stderr);
 	bitVectorPrint(&inMsg);
@@ -439,3 +538,5 @@ main(int argc, char *argv[]) {
 	// case no error occured.
 	return 0;
 }
+
+#endif
