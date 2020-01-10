@@ -15,6 +15,13 @@
 #include <stdlib.h>
 #include <string.h>
 
+#define nil 0
+
+// All bitVector fields except len are opaque. len is guaranteed to be
+// the first field in the struct and of integer type.
+
+///////////////////////////////////////////////////////////////
+
 typedef unsigned long bitVectorSmall;
 typedef struct {
 	// Length and backing storage capacity, both in bits.
@@ -33,11 +40,68 @@ enum {
 	bitsInABitVectorSmall = bitsInAByte * sizeof(bitVectorSmall),
 };
 
+// The set parameter should be either 0 or 1.
+//
+// If set is 0, effectively nothing is done.
+//
+// If set is 1, the i-th bit in a is set.
+static inline
+void
+bitVectorSet(bitVector *a, int set, long i) {
+	a->arr[i / bitsInABitVectorSmall] |= (bitVectorSmall)set << (i % bitsInABitVectorSmall);
+}
+
+// Returns the capacity in bits of the bitVector.
+static inline
+long
+bitVectorCap(const bitVector *a) {
+	return a->cap;
+}
+
 // Returns ceiling(n / bitsInABitVectorSmall).
 static inline
 long
 ceilDiv(long n) {
 	return (n - 1) / bitsInABitVectorSmall + 1;
+}
+
+// Clears all the bits in a's capacity.
+static inline
+void
+bitVectorClear(bitVector *a) {
+	memset(a->arr, 0, ceilDiv(a->cap) * sizeof(a->arr[0]));
+}
+
+// Sets capacity to cap, allocates enough memory to have that capacity
+// in bits, sets len to 0. The bits are all initialized to zero.
+static inline
+void
+bitVectorAlloc(bitVector *a, long cap) {
+	a->len = 0;
+	a->cap = cap;
+	a->arr = calloc(ceilDiv(cap), sizeof(a->arr[0]));
+}
+
+static inline
+void
+bitVectorRealloc(bitVector *a, long cap) {
+	bitVectorSmall *tmp = realloc(a->arr, ceilDiv(cap) * sizeof(a->arr[0]));
+	if (tmp == nil) {
+		free(a->arr);
+	} else {
+		long d = cap - a->cap;
+		if (0 < d) {
+			memset(&(a->arr[a->cap]), 0, d / bitsInAByte);
+		}
+		a->cap = cap;
+	}
+	a->arr = tmp;
+}
+
+static inline
+void
+bitVectorFree(bitVector *a) {
+	free(a->arr);
 }
 
 // Performs bitwise exclusive-or between the op and out bit vectors.
@@ -126,6 +190,8 @@ printBitVector(const bitVector *bV) {
 	printf("\n");
 }
 
+///////////////////////////////////////////////////////////////
+
 // Is l a power of two? Or, equivalently, does l have a set bit count
 // (population count/popcount) of one?
 static inline
@@ -161,8 +227,8 @@ makeGen(long n, long k) {
 	bitVector *r = malloc(sizeof(*r) * k);
 	long i, j;
 	for (i = 0; i < k; i++) {
+		bitVectorAlloc(&r[i], n);
 		r[i].len = n;
-		r[i].arr = calloc(sizeof(r[i].arr[0]), ceilDiv(n));
 	}
 	long nonPowerOfTwoColumns = 0, pow = 1;
 	for (j = 0; j < n; j++) {
@@ -172,16 +238,14 @@ makeGen(long n, long k) {
 				// We check columns that have the pow
 				// bit set.
 				if (i & pow) {
-					r[hamm(i)].arr[j / bitsInABitVectorSmall] |=
-						1UL << (j % bitsInABitVectorSmall);
+					bitVectorSet(&r[hamm(i)], 1, j);
 				}
 			}
 			pow <<= 1;
 		} else {
 			// j + 1 is not a power of two. Set the bit
 			// r[row=nonPowerOfTwoColumns, column=j].
-			r[nonPowerOfTwoColumns].arr[j / bitsInABitVectorSmall]
-				|= 1UL << (j % bitsInABitVectorSmall);
+			bitVectorSet(&r[nonPowerOfTwoColumns], 1, j);
 			nonPowerOfTwoColumns++;
 		}
 	}
@@ -220,7 +284,7 @@ void
 freeMat(bitVector *mat, long k) {
 	long i;
 	for (i = 0; i < k; i++) {
-		free(mat[i].arr);
+		bitVectorFree(&mat[i]);
 	}
 	free(mat);
 }
@@ -290,8 +354,8 @@ main(int argc, char *argv[]) {
 		// In bits.
 		initialInputMessageCapacity = 1UL << 13,
 	};
-	bitVector inMsg = {0, initialInputMessageCapacity};
-	inMsg.arr = calloc(sizeof(inMsg.arr[0]), inMsg.cap / bitsInABitVectorSmall);
+	bitVector inMsg;
+	bitVectorAlloc(&inMsg, initialInputMessageCapacity);
 	for (;;) {
 		int c = fgetc(stdin);
 		if (c == '	' || c == ' ' || c == '\n' || c == '\r') {
@@ -305,15 +369,13 @@ main(int argc, char *argv[]) {
 
 		// c is now either zero or one. Set or clear the
 		// corresponding bit accordingly.
-		inMsg.arr[inMsg.len / bitsInABitVectorSmall] |=
-			(bitVectorSmall)c << (inMsg.len % bitsInABitVectorSmall);
+		bitVectorSet(&inMsg, c, inMsg.len);
 
 		inMsg.len++;
 
-		if (inMsg.cap - 1 < inMsg.len) {
-			inMsg.cap <<= 1;
-			inMsg.arr =
-				realloc(inMsg.arr, inMsg.cap / bitsInABitVectorSmall * sizeof(inMsg.arr[0]));
+		long cap = bitVectorCap(&inMsg);
+		if (cap - 1 < inMsg.len) {
+			bitVectorRealloc(&inMsg, cap << 1);
 		}
 	}
 	fprintf(stderr, "\nInput source message:\n");
@@ -324,17 +386,17 @@ main(int argc, char *argv[]) {
 	fprintf(stderr, "\nThe generator matrix for the code:\n\n");
 	printMatrix(genMat, k);
 
-	// The capacity struct field is unused here, so it is OK to set
-	// it to zero, although that is not the real capacity.
 	fprintf(stderr, "\nTo encode the entire source input string into codewords, we divide the input "
 			"string into parts of k or less bits, where the last part's last bits are padded "
 			"with zeros. Each input part is multiplied with the generator to produce the "
 			"corresponding codeword.\n\n");
-	bitVector codeWord = {n, 0};
-	codeWord.arr = calloc(sizeof(codeWord.arr[0]), ceilDiv(n));
+	bitVector codeWord;
+	bitVectorAlloc(&codeWord, n);
+	codeWord.len = n;
 	long i;
-	bitVector block = {k, 0};
-	block.arr = calloc(sizeof(block.arr[0]), ceilDiv(k));
+	bitVector block;
+	bitVectorAlloc(&block, k);
+	block.len = k;
 	for (i = 0; i < inMsg.len; i += k) {
 		if (inMsg.len - i < block.len) {
 			block.len = inMsg.len - i;
@@ -350,15 +412,15 @@ main(int argc, char *argv[]) {
 		printBitVector(&codeWord);
 
 		// Clear the bit vectors for the next code word.
-		memset(block.arr, 0, sizeof(block.arr[0]) * ceilDiv(block.len));
-		memset(codeWord.arr, 0, sizeof(codeWord.arr[0]) * ceilDiv(n));
+		bitVectorClear(&block);
+		bitVectorClear(&codeWord);
 	}
 
 	// Deallocate memory.
-	free(block.arr);
-	free(codeWord.arr);
+	bitVectorFree(&block);
+	bitVectorFree(&codeWord);
 	freeMat(genMat, k);
-	free(inMsg.arr);
+	bitVectorFree(&inMsg);
 
 	// C main function must return an int, and it should be zero in
 	// case no error occured.
