@@ -90,14 +90,17 @@ static inline
 void
 bitVectorAlloc(bitVector *a, long cap) {
 	a->len = 0;
-	a->cap = cap;
-	a->arr = calloc(ceilDiv(cap), sizeof(a->arr[0]));
+	cap = ceilDiv(cap);
+	a->cap = cap * bitsInABitVectorSmall;
+	a->arr = calloc(cap, sizeof(a->arr[0]));
 }
 
 static
 void
 bitVectorRealloc(bitVector *a, long cap) {
-	bitVectorSmall *tmp = realloc(a->arr, ceilDiv(cap) * sizeof(a->arr[0]));
+	cap = ceilDiv(cap);
+	bitVectorSmall *tmp = realloc(a->arr, cap * sizeof(a->arr[0]));
+	cap *= bitsInABitVectorSmall;
 	if (tmp == nil) {
 		free(a->arr);
 	} else {
