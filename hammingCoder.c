@@ -243,24 +243,23 @@ isPowerOfTwo(long l) {
 	return (l & (l - 1)) == 0;
 }
 
-// See below.
+// Ceiling of the binary logarithm.
 static inline
 long
-hamm(long i) {
-	long m = 0, l;
-	for (l = 1; l < i; l++) {
-		if (!isPowerOfTwo(l)) {
-			m++;
-		}
+ceilLog2(long n) {
+	long r = 0;
+	unsigned long t;
+	for (t = n - 1; t != 0; t >>= 1) {
+		r++;
 	}
-	return m;
+	return r;
 }
 
 // Returns the corresponding k Hamming code parameter for a given n.
 static inline
 long
 hammingK(long n) {
-	return hamm(n) + 1;
+	return n - ceilLog2(n + 1);
 }
 
 // Makes the generator matrix for the [n, k] Hamming code.
@@ -281,7 +280,7 @@ makeGen(long n, long k) {
 				// We check columns that have the pow
 				// bit set.
 				if (i & pow) {
-					bitVectorSet(&r[hamm(i)], 1, j);
+					bitVectorSet(&r[hammingK(i) - 1], 1, j);
 				}
 			}
 			pow <<= 1;
