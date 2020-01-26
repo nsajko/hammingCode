@@ -357,23 +357,22 @@ fakeGet(void) {
 
 int
 LLVMFuzzerTestOneInput(const uint8_t *data, size_t size) {
-	if (size < 3 * sizeof(uint8_t)) {
+	if (size < 2 * sizeof(uint8_t)) {
 		return 0;
 	}
 
-	uint8_t nByte, kByte;
+	uint8_t nByte;
 	memcpy(&nByte, data, sizeof(nByte));
 	data += sizeof(nByte);
 	size -= sizeof(nByte);
-	memcpy(&kByte, data, sizeof(kByte));
-	data += sizeof(kByte);
-	size -= sizeof(kByte);
 
-	long n = nByte, k = kByte;
+	long n = nByte;
 
-	if (k != hammingK(n)) {
+	if (isPowerOfTwo(n)) {
 		return 0;
 	}
+
+	long k = hammingK(n);
 
 	// Initialize fakeGet.
 	fakeGetStorage.cap = size;
