@@ -63,6 +63,12 @@ bitVectorSet(bitVector *a, int set, long i) {
 	a->arr[i / bitsInABitVectorSmall] |= (bitVectorSmall)set << (i % bitsInABitVectorSmall);
 }
 
+static
+int
+bitVectorBitIsSet(const bitVector *a, long i) {
+	return a->arr[i / bitsInABitVectorSmall] & (1UL << (i % bitsInABitVectorSmall));
+}
+
 // Returns the capacity in bits of the bitVector.
 static
 long
@@ -127,29 +133,6 @@ bitVectorXOR(bitVector *out, const bitVector *op) {
 	for (i = 0; i < l; i++) {
 		out->arr[i] ^= op->arr[i];
 	}
-}
-
-// Counts the number of contiguous bits b in the bit vector, starting at
-// index i.
-static
-long
-bitVectorCountContiguous(const bitVector *bV, long i, unsigned long b) {
-	// The first loop is an optimization for cases where a
-	// bitVectorSmall range consists of either 0UL or ~0UL,
-	// depending on b.
-	long j;
-	bitVectorSmall s = 0;
-	if (b != 0) {
-		s = ~s;
-	}
-	for (j = i; j < bV->len && (bV->arr[j / bitsInABitVectorSmall] == s); j += bitsInABitVectorSmall) {}
-	if (bV->len < j) {
-		j = bV->len;
-	}
-	for (; j < bV->len &&
-			(b == (1 & (bV->arr[j / bitsInABitVectorSmall] >> (j % bitsInABitVectorSmall))))
-			; j++) {}
-	return j - i;
 }
 
 // Moves a contiguous range of bits from in starting at index i to out.
@@ -300,25 +283,10 @@ void
 rowMulMat(bitVector *out, const bitVector *row, const bitVector *mat) {
 	bitVectorClear(out);
 
-	// We operate by finding ranges of set bits in the row, prefixed
-	// by ranges of unset bits, and then adding up with XOR the
-	// corresponding rows from mat.
-	long i;
-	for (i = 0; i < row->len;) {
-		// Skip range of unset bits.
-		i += bitVectorCountContiguous(row, i, 0);
-
-		// Find the range of set bits.
-		long j = i + bitVectorCountContiguous(row, i, 1);
-
-		// Add up the corresponding range of rows from mat into
-		// out.
-		long k;
-		for (k = i; k < j; k++) {
-			bitVectorXOR(out, &(mat[k]));
+	for (long i = 0; i < row->len; i++) {
+		if (bitVectorBitIsSet(row, i)) {
+			bitVectorXOR(out, &(mat[i]));
 		}
-
-		i = j;
 	}
 }
 
