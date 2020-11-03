@@ -57,28 +57,28 @@ enum {
 // If set is 0, effectively nothing is done.
 //
 // If set is 1, the i-th bit in a is set.
-static inline
+static
 void
 bitVectorSet(bitVector *a, int set, long i) {
 	a->arr[i / bitsInABitVectorSmall] |= (bitVectorSmall)set << (i % bitsInABitVectorSmall);
 }
 
 // Returns the capacity in bits of the bitVector.
-static inline
+static
 long
 bitVectorCap(const bitVector *a) {
 	return a->cap;
 }
 
 // Returns ceiling(n / bitsInABitVectorSmall).
-static inline
+static
 long
 ceilDiv(long n) {
 	return (n - 1) / bitsInABitVectorSmall + 1;
 }
 
 // Clears all the bits in a's capacity.
-static inline
+static
 void
 bitVectorClear(bitVector *a) {
 	memset(a->arr, 0, ceilDiv(a->cap) * sizeof(a->arr[0]));
@@ -86,7 +86,7 @@ bitVectorClear(bitVector *a) {
 
 // Sets capacity to cap, allocates enough memory to have that capacity
 // in bits, sets len to 0. The bits are all initialized to zero.
-static inline
+static
 void
 bitVectorAlloc(bitVector *a, long cap) {
 	a->len = 0;
@@ -113,7 +113,7 @@ bitVectorRealloc(bitVector *a, long cap) {
 	a->arr = tmp;
 }
 
-static inline
+static
 void
 bitVectorFree(bitVector *a) {
 	free(a->arr);
@@ -178,7 +178,7 @@ bitVectorMoveInto(bitVector *out, const bitVector *in, long i) {
 }
 
 // Shows the boolean argument as bits '0' or '1' on stdout.
-static inline
+static
 void
 printBool(unsigned long b) {
 	if (b) {
@@ -237,14 +237,14 @@ bitVectorFillWithInput(bitVector *a, int (*getInput)(void)) {
 
 // Is l a power of two? Or, equivalently, does l have a set bit count
 // (population count/popcount) of one?
-static inline
+static
 int
 isPowerOfTwo(long l) {
 	return (l & (l - 1)) == 0;
 }
 
 // Ceiling of the binary logarithm.
-static inline
+static
 long
 ceilLog2(long n) {
 	long r = 0;
@@ -256,14 +256,14 @@ ceilLog2(long n) {
 }
 
 // Returns the corresponding k Hamming code parameter for a given n.
-static inline
+static
 long
 hammingK(long n) {
 	return n - ceilLog2(n + 1);
 }
 
 // Makes the generator matrix for the [n, k] Hamming code.
-static inline
+static
 bitVector *
 makeGen(long n, long k) {
 	bitVector *r = malloc(sizeof(*r) * k);
@@ -295,7 +295,7 @@ makeGen(long n, long k) {
 }
 
 // Multiplies the row-vector with the matrix.
-static inline
+static
 void
 rowMulMat(bitVector *out, const bitVector *row, const bitVector *mat) {
 	bitVectorClear(out);
@@ -323,7 +323,7 @@ rowMulMat(bitVector *out, const bitVector *row, const bitVector *mat) {
 }
 
 // Frees all k rows belonging to the matrix, then the matrix itself.
-static inline
+static
 void
 freeMat(bitVector *mat, long k) {
 	long i;
@@ -418,7 +418,7 @@ fgetcStdin(void) {
 }
 
 // Shows the array of bit vectors/rows on stdout (as a matrix).
-static inline
+static
 void
 printMatrix(const bitVector *m, long rows) {
 	long r;
@@ -429,7 +429,7 @@ printMatrix(const bitVector *m, long rows) {
 }
 
 // Converts an ASCII char to the number it represents.
-static inline
+static
 long
 ASCIIToNum(long c) {
 	return c - '0';
@@ -437,7 +437,7 @@ ASCIIToNum(long c) {
 
 // Lexes an ASCII string into a number. Does not look at anything after
 // the first char outside the ASCII numeral range.
-static inline
+static
 long
 lexDecimalASCII(const char *s) {
 	int i = 0;
