@@ -130,6 +130,12 @@ class bitVector final {
 		return (n - 1) / wordBits + 1;
 	}
 
+	// Returns ceiling(n / byteBits).
+	[[nodiscard]] static intmax
+	ceilDivByte(intmax n) {
+		return (n - 1) / byteBits + 1;
+	}
+
 	void
 	trapIfMisaligned() {
 		constexpr int S = 1UL << 15;
@@ -143,13 +149,6 @@ class bitVector final {
 			__builtin_trap();
 		}
 	}
-
-	// Alternative approach to accessing the bit storage. For investigation.
-	//
-	//	[[nodiscard]] uint8
-	//	byteAt(intmax i) const {
-	//		return reinterpret_cast<uint8*>(arr.data())[i]
-	//	}
 
 	// Returns the i-th word in the bit storage.
 	[[nodiscard]] word
@@ -317,8 +316,10 @@ class bitVector final {
 	// XORs the current instance with op.
 	void
 	exOr(const bitVector &op) {
-		for (intmax l = ceilDivWord(len), i = 0; i < l; i++) {
-			(*this)[i] ^= op[i];
+		auto out = std::assume_aligned<aligSize>(reinterpret_cast<uint8*>(arr.data()));
+		auto in  = std::assume_aligned<aligSize>(reinterpret_cast<const uint8*>(op.arr.data()));
+		for (intmax l = ceilDivByte(len), i = 0; i < l; i++) {
+			out[i] ^= in[i];
 		}
 	}
 
