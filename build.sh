@@ -12,6 +12,9 @@ clang_opt="$polly_opt -stdlib=libstdc++ -ferror-limit=4 -Wcast-qual -Wundefined-
 gcc_opt="-fmax-errors=4 -flto $opt"
 
 case "$1" in
+gcc-musl)
+	x86_64-linux-musl-g++ -static $gcc_opt
+	;;
 clang)
 	clang++ $clang_opt
 	;;
