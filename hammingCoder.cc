@@ -537,8 +537,9 @@ main(int argc, char *argv[]) {
 	}
 	intmax k = lexDecimalASCII(argv[2]);
 	if (auto correctK = hammingK(n); k != correctK) {
-		std::cerr << "coder: wrong input for second argument (k),\ntry " <<
-		             correctK << '\n';
+		std::cerr << "coder: the given combination of arguments does not describe\n"
+		             "a Hamming code. Try either (" << n << ", " << correctK <<
+		             ") or (" << hammingN(k) << ", " << k << ").\n";
 		return 1;
 	}
 
