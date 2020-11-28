@@ -28,6 +28,9 @@ clang)
 gcc)
 	g++ $gcc_opt
 	;;
+naive)
+	g++ -D NAIVE_HAMMING $gcc_opt
+	;;
 fuzz)
 	clang++ -fsanitize=fuzzer,address,undefined -fsanitize-trap=undefined -fno-omit-frame-pointer -D FUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION $clang_opt
 	;;

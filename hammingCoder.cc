@@ -32,6 +32,13 @@ using intmax = std::intmax_t;
 
 constexpr intmax byteBits = 8;
 
+#ifdef NAIVE_HAMMING
+#   undef NAIVE_HAMMING
+constexpr bool useNaiveHamming = true;
+#else
+constexpr bool useNaiveHamming = false;
+#endif
+
 // In bytes.
 constexpr int bitStorageAlignment = 1UL << 8;
 
@@ -78,10 +85,13 @@ lexDecimalASCII(const char *s) {
 	return r;
 }
 
+// A bit storage type is defined by the unsigned integer word type T, and the alignment n
+// of the bit storage, in bytes.
 template<typename T, int n>
 concept BitStorage = (std::is_integral_v<T> && std::is_unsigned_v<T> &&
 		      std::has_single_bit(sc<uint>(n)) && (sizeof(T) <= n));
 
+// A bit vector type.
 template<typename word, int aligSize>
 requires BitStorage<word, aligSize>
 class bitVector final {
@@ -89,11 +99,6 @@ class bitVector final {
 	intmax len = 0;
 
 	struct AlignedBits final {
-		static_assert(std::is_integral_v<word>);
-		static_assert(std::is_unsigned_v<word>);
-		static_assert(std::has_single_bit(sc<uint>(aligSize)));
-		static_assert(sizeof(word) <= aligSize);
-
 		alignas(aligSize) word a[aligSize / sizeof(word)];
 
 		[[nodiscard]] word &
@@ -136,6 +141,7 @@ class bitVector final {
 		return (n - 1) / byteBits + 1;
 	}
 
+	// Traps if the bit vector's backing storage is misaligned.
 	void
 	trapIfMisaligned() {
 		constexpr int S = 1UL << 15;
@@ -188,11 +194,13 @@ class bitVector final {
 		(*this)[i / wordBits] |= sc<word>(sc<word>(set) << (i % wordBits));
 	}
 
+	// XORs the bit vector's i-th bit with the bit bit.
 	void
 	exOrBit(intmax bit, intmax i) {
 		(*this)[i / wordBits] ^= sc<word>(sc<word>(bit) << (i % wordBits));
 	}
 
+	// Returns the i-th bit.
 	[[nodiscard]] intmax
 	isSet(intmax i) const {
 		return ((*this)[i / wordBits] >> (i % wordBits)) & 1UL;
@@ -252,6 +260,7 @@ class bitVector final {
 		(*this)[out_off_wrd] = sc<word>(sc<word>((*this)[out_off_wrd] << i) >> i);
 	}
 
+	// Fills the bitVector with input from r.
 	template<typename X>
 	bitVector(X r):
 	bitVector(bitVector<word, aligSize>::ConstrTypeAlloc::e, initialInputMessageCapacity) {
@@ -378,7 +387,7 @@ class bitGenMatrix final {
 	[[nodiscard]] std::unique_ptr<bitVector<T, S>>
 	rowMulMat(const bitVector<T, S> &row) const {
 		auto out = std::make_unique<bitVector<T, S>>(
-		bitVector<T, S>(bitVector<T, S>::ConstrTypeZero::e, m[0].getLen()));
+		  bitVector<T, S>(bitVector<T, S>::ConstrTypeZero::e, m[0].getLen()));
 		for (intmax len = row.getLen(), i = 0; i < len; i++) {
 			if (row.isSet(i) != 0) {
 				out->exOr(m[sc<vst>(i)]);
@@ -387,6 +396,7 @@ class bitGenMatrix final {
 		return out;
 	}
 
+	// Prints the matrix.
 	void
 	print() const {
 		for (intmax r = 0; r < rows; r++) {
@@ -457,6 +467,7 @@ LLVMFuzzerTestOneInput(const uint8_t *data, size_t size) {
 
 	using bWord = uint8;
 	constexpr int align = 4;
+	using bV = bitVector<bWord, align>;
 
 	class FuzzReader final {
 		// The pointer arithmetic here is a bit ugly, but it's OK because the data
@@ -479,7 +490,7 @@ LLVMFuzzerTestOneInput(const uint8_t *data, size_t size) {
 		}
 	} fakeGet(sc<intmax>(size), data);
 
-	bitVector<bWord, align> inMsg(fakeGet);
+	bV inMsg(fakeGet);
 	auto inMsgTest = makeBitVectorVectorWithInput<bWord, align>(fakeGet, k);
 	bitGenMatrix<bWord, align> genMat(n);
 	decltype(inMsgTest)::size_type I = 0;
@@ -487,12 +498,12 @@ LLVMFuzzerTestOneInput(const uint8_t *data, size_t size) {
 		if (iMsgLen - i < blLen) {
 			blLen = iMsgLen - i;
 		}
-		bitVector<bWord, align> block(inMsg, i, blLen);
+		bV block(inMsg, i, blLen);
 		if (!block.equal(inMsgTest[I])) {
 			__builtin_trap();
 		}
 		if (!(*genMat.rowMulMat(block)).equal(
-		    bitVector<bWord, align>(block, n))) {
+		    bV(block, n))) {
 			__builtin_trap();
 		}
 	}
@@ -539,8 +550,9 @@ main(int argc, char *argv[]) {
 	std::cerr.flush();
 
 	using bWord = uintmax;
+	using bV = bitVector<bWord, bitStorageAlignment>;
 
-	bitVector<bWord, bitStorageAlignment> inMsg([]()->int {return std::cin.get();});
+	bV inMsg([]()->int {return std::cin.get();});
 	std::cerr << "\nInput source message:\n";
 	std::cerr.flush();
 	inMsg.print();
@@ -548,9 +560,12 @@ main(int argc, char *argv[]) {
 
 	// Make and show the code's generator matrix.
 	bitGenMatrix<bWord, bitStorageAlignment> genMat(n);
-	std::cerr << "\nThe generator matrix for the code:\n\n";
-	std::cerr.flush();
-	genMat.print();
+	if constexpr (!useNaiveHamming) {
+		std::cerr << "\nThe generator matrix for the code:\n\n";
+		std::cerr.flush();
+		genMat.print();
+	}
+
 	std::cout << '\n';
 	std::cout.flush();
 
@@ -566,19 +581,21 @@ main(int argc, char *argv[]) {
 		}
 
 		// Copy blLen bits from inMsg to block.
-		bitVector<bWord, bitStorageAlignment> block(inMsg, i, blLen);
+		bV block(inMsg, i, blLen);
 		std::cerr << "Input " << std::setw(4) << blLen << " bits: ";
 		std::cerr.flush();
 		block.print();
 		std::cout.flush();
 
 		// Compute the output code word.
-		auto codeWord = genMat.rowMulMat(block);
 		std::cerr << "Output: ";
 		std::cerr.flush();
-		codeWord->print();
+		if constexpr (useNaiveHamming) {
+			bV(block, n).print();
+		} else {
+			genMat.rowMulMat(block)->print();
+		}
 		std::cout.flush();
-		codeWord = nullptr;
 	}
 
 	return 0;
