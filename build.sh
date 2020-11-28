@@ -15,6 +15,11 @@ case "$1" in
 gcc-musl)
 	x86_64-linux-musl-g++ -static $gcc_opt
 	;;
+clang-callgraph)
+	clang++ -std=c++20 -g -march=native -O3 -fno-exceptions -stdlib=libstdc++ -emit-llvm -S -o - hammingCoder.cc | opt -dot-callgraph
+	c++filt < '<stdin>.callgraph.dot' | sed 's,>,\\>,g; s,-\\>,->,g; s,<,\\<,g' | dot -Tsvg > callgraph.svg
+	rm '<stdin>.callgraph.dot'
+	;;
 clang)
 	clang++ $clang_opt
 	;;
