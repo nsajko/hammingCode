@@ -1,7 +1,9 @@
 #! /bin/sh
 set -u
 
-opt="-o hammingCoder-$1 -std=c++20 -Werror -Wall -Wextra -Wno-unused-function -Wcast-align -Wconversion -Wold-style-cast -g -march=native -O3 -fno-exceptions hammingCoder.cc"
+cxx_opt='-std=c++20 -Werror -Wall -Wextra -Wno-unused-function -Wcast-align -Wconversion -Wold-style-cast -g -march=native -O3 -fno-exceptions'
+
+opt="-o hammingCoder-$1 $cxx_opt hammingCoder.cc"
 
 polly_opt=
 # polly_opt="-mllvm -polly"
@@ -40,5 +42,8 @@ nofuzz-gdb-clang)
 	;;
 nofuzz-gdb-gcc)
 	g++ -fno-omit-frame-pointer -D FUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION $gcc_opt nofuzz.cc
+	;;
+util-random-ascii-bits)
+	g++ -D BUFFERED -o util-random-ascii-bits $cxx_opt -flto util/random-ascii-bits.cc
 	;;
 esac
