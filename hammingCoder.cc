@@ -15,8 +15,10 @@
 
 #include <algorithm>
 #include <bit>
+#include <chrono>
 #include <cstdint>
 #include <cstring>
+#include <fstream>
 #include <iomanip>
 #include <iostream>
 #include <memory>
@@ -37,6 +39,13 @@ constexpr intmax byteBits = 8;
 constexpr bool useNaiveHamming = true;
 #else
 constexpr bool useNaiveHamming = false;
+#endif
+
+#ifdef USE_STOPWATCH
+#   undef USE_STOPWATCH
+constexpr bool useStopwatch = true;
+#else
+constexpr bool useStopwatch = false;
 #endif
 
 // In bytes.
@@ -543,6 +552,11 @@ main(int argc, char *argv[]) {
 		return 1;
 	}
 
+	std::chrono::time_point<std::chrono::steady_clock> startTime;
+	if constexpr (useStopwatch) {
+		startTime = std::chrono::steady_clock::now();
+	}
+
 	std::cerr << "Linear block code [n = " << n << ", k = " << k <<
 	             "]\n(n = code word length) (k = number of source bits in each code word)\n"
 	             "code rate = R(K) = " << (sc<double>(k) / sc<double>(n)) <<
@@ -597,6 +611,14 @@ main(int argc, char *argv[]) {
 			genMat.rowMulMat(block)->print();
 		}
 		std::cout.flush();
+	}
+
+	if constexpr (useStopwatch) {
+		std::ofstream("/tmp/hammingCoderStopwatch", std::ios_base::app) <<
+		  std::boolalpha <<
+		  useNaiveHamming << ' ' << bitStorageAlignment << ' ' << n << ": " <<
+		  std::chrono::duration<double>(std::chrono::steady_clock::now() - startTime).
+		  count() << '\n';
 	}
 
 	return 0;
