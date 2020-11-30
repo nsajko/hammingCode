@@ -8,8 +8,7 @@
 // messages.
 //
 // Bit vectors are used to compactly represent arbitrarily long strings
-// of bits. They are aligned with cache lines to make cache usage more
-// efficient and enable vectorization (or at least that's the idea).
+// of bits.
 //
 // For simplicity, I ignored the possibility of heap allocation failing.
 
@@ -49,7 +48,7 @@ constexpr bool useStopwatch = false;
 #endif
 
 // In bytes.
-constexpr int bitStorageAlignment = 1UL << 8;
+constexpr int bitStorageAlignment = 1UL << 4;
 
 // Configurable initial capacity for the input message in bits.
 constexpr intmax initialInputMessageCapacity = bitStorageAlignment * byteBits;
