@@ -3,7 +3,7 @@ set -u
 
 cxx_opt='-std=c++20 -Werror -Wall -Wextra -Wno-unused-function -Wcast-align -Wconversion -Wold-style-cast -g -march=native -O3 -fno-exceptions'
 
-opt="-o hammingCoder-$1 $cxx_opt hammingCoder.cc"
+opt="-o hammingCoder-$1 $cxx_opt -D HAM_COD_ALG=HammingCoderAlgor::GenMat hammingCoder.cc"
 
 polly_opt=
 # polly_opt="-mllvm -polly"
@@ -28,11 +28,8 @@ clang)
 gcc)
 	g++ $gcc_opt
 	;;
-naive)
-	g++ -D NAIVE_HAMMING $gcc_opt
-	;;
 fuzz)
-	clang++ -fsanitize=fuzzer,address,undefined -fsanitize-trap=undefined -fno-omit-frame-pointer -D FUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION $clang_opt
+	clang++ -D FUZZ_AGAINST_VERY_NAIVE -fsanitize=fuzzer,address,undefined -fsanitize-trap=undefined -fno-omit-frame-pointer -D FUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION $clang_opt
 	;;
 nofuzz-clang)
 	clang++ -fsanitize=address,undefined -fsanitize-trap=undefined -fno-omit-frame-pointer -D FUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION $clang_opt nofuzz.cc

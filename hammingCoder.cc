@@ -33,18 +33,31 @@ using intmax = std::intmax_t;
 
 constexpr intmax byteBits = 8;
 
-#ifdef NAIVE_HAMMING
-#   undef NAIVE_HAMMING
-constexpr bool useNaiveHamming = true;
+// Hamming code algorithms.
+enum class HammingCoderAlgor {
+	GenMat,
+	Naive,
+	VeryNaive,
+};
+
+// Macros are used for conditional compilation, but the goal is to replace them with
+// constexpr variables as soon as possible, undeffing the macros simultaneously.
+
+[[maybe_unused]] constexpr HammingCoderAlgor hamCoderAlgo = HAM_COD_ALG;
+#undef HAM_COD_ALG
+
+#ifdef FUZZ_AGAINST_VERY_NAIVE
+#   undef FUZZ_AGAINST_VERY_NAIVE
+constexpr bool fuzzAgainstVeryNaive = true;
 #else
-constexpr bool useNaiveHamming = false;
+[[maybe_unused]] constexpr bool fuzzAgainstVeryNaive = false;
 #endif
 
 #ifdef USE_STOPWATCH
 #   undef USE_STOPWATCH
 constexpr bool useStopwatch = true;
 #else
-constexpr bool useStopwatch = false;
+[[maybe_unused]] constexpr bool useStopwatch = false;
 #endif
 
 // In bytes.
@@ -186,6 +199,7 @@ class bitVector final {
 	// The enumeration constants themselves are not important, just the types are.
 	enum class ConstrTypeAlloc {e};
 	enum class ConstrTypeZero {e};
+	enum class ConstrTypeVeryNaive {e};
 
 	[[nodiscard]] intmax
 	getLen() const {
@@ -289,11 +303,37 @@ class bitVector final {
 		}
 	}
 
-	// A naive Hamming code coder, replaces bitGenMatrix while testing the rest of the code.
-	//
-	// Notice how similar this is to the bitGenMatrix constructor.
+	// A very naive Hamming code coder, doesn't use matrix multiplication.
+	bitVector([[maybe_unused]] ConstrTypeVeryNaive unused, bitVector<word, aligSize> &in, intmax n):
+	bitVector(bitVector<word, aligSize>::ConstrTypeZero::e, n) {
+		n = hammingN(in.len);
+
+		// Copy the data bits from the input.
+		for (intmax I = 0, pow = 4, i = 3; i <= n; i++) {
+			if (i == pow) {
+				pow <<= 1;
+				continue;
+			}
+
+			set(in.isSet(I), i - 1);
+			I++;
+		}
+
+		// Create parity bits.
+		for (intmax pow = 1; pow <= n; pow <<= 1) {
+			for (intmax j = pow + 1; j <= n; j++) {
+				if ((j & pow) != 0) {
+					exOrBit(isSet(j - 1), pow - 1);
+				}
+			}
+		}
+	}
+
+	// A naive Hamming code coder, doesn't use matrix multiplication.
 	bitVector(bitVector<word, aligSize> &in, intmax n):
 	bitVector(bitVector<word, aligSize>::ConstrTypeZero::e, n) {
+		// Notice how similar this is to the bitGenMatrix constructor.
+
 		// The fact that in.len can be smaller than hammingK(n) (which can happen with the
 		// last block of input) complicates the implementation somewhat.
 		// in.len can be smaller than hammingK(n), in which case we need to decrease n
@@ -510,8 +550,13 @@ LLVMFuzzerTestOneInput(const uint8_t *data, size_t size) {
 		if (!block.equal(inMsgTest[I])) {
 			__builtin_trap();
 		}
-		if (!(*genMat.rowMulMat(block)).equal(
-		    bV(block, n))) {
+		if constexpr (fuzzAgainstVeryNaive) {
+			if (!(*genMat.rowMulMat(block)).equal(bV(bV::ConstrTypeVeryNaive::e, block, n))) {
+				__builtin_trap();
+			}
+			continue;
+		}
+		if (!(*genMat.rowMulMat(block)).equal(bV(block, n))) {
 			__builtin_trap();
 		}
 	}
@@ -574,7 +619,7 @@ main(int argc, char *argv[]) {
 
 	// Make and show the code's generator matrix.
 	bitGenMatrix<bWord, bitStorageAlignment> genMat(n);
-	if constexpr (!useNaiveHamming) {
+	if constexpr (hamCoderAlgo == HammingCoderAlgor::GenMat) {
 		std::cerr << "\nThe generator matrix for the code:\n\n";
 		std::cerr.flush();
 		genMat.print();
@@ -604,18 +649,29 @@ main(int argc, char *argv[]) {
 		// Compute the output code word.
 		std::cerr << "Output: ";
 		std::cerr.flush();
-		if constexpr (useNaiveHamming) {
+		if constexpr (hamCoderAlgo == HammingCoderAlgor::VeryNaive) {
+			bV(bV::ConstrTypeVeryNaive::e, block, n).print();
+		} else if constexpr (hamCoderAlgo == HammingCoderAlgor::Naive) {
 			bV(block, n).print();
-		} else {
+		} else if constexpr (hamCoderAlgo == HammingCoderAlgor::GenMat) {
 			genMat.rowMulMat(block)->print();
+		} else {
+			// We should have covered all enumeration constants above, so this
+			// shouldn't ever happen.
+			__builtin_trap();
 		}
 		std::cout.flush();
 	}
 
 	if constexpr (useStopwatch) {
+		auto hca = "VeryNaive";
+		if constexpr (hamCoderAlgo == HammingCoderAlgor::Naive) {
+			hca = "Naive";
+		} else if constexpr (hamCoderAlgo == HammingCoderAlgor::GenMat) {
+			hca = "GenMat";
+		}
 		std::ofstream("/tmp/hammingCoderStopwatch", std::ios_base::app) <<
-		  std::boolalpha <<
-		  useNaiveHamming << ' ' << bitStorageAlignment << ' ' << n << ": " <<
+		  hca << ' ' << bitStorageAlignment << ' ' << n << ": " <<
 		  std::chrono::duration<double>(std::chrono::steady_clock::now() - startTime).
 		  count() << '\n';
 	}
