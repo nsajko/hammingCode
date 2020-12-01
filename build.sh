@@ -44,6 +44,6 @@ nofuzz-gdb-gcc)
 	g++ -fno-omit-frame-pointer -D FUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION $gcc_opt nofuzz.cc
 	;;
 util-random-ascii-bits)
-	g++ -D BUFFERED -o util-random-ascii-bits $cxx_opt -flto util/random-ascii-bits.cc
+	g++ -o util-random-ascii-bits $cxx_opt -flto util/random-ascii-bits.cc
 	;;
 esac

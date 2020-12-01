@@ -59,13 +59,6 @@ numToASCII(uint64 a) {
 	return a | 0x30UL;
 }
 
-void
-p(uint64 a) {
-	for (int i = 0; i < sc<int>(sizeof(uint64) * byteBits); i++) {
-		std::cout << sc<char>(numToASCII((a >> i) & 1UL));
-	}
-}
-
 }  // namespace
 
 int
@@ -76,23 +69,18 @@ main() {
 
 	Xoshiro256<PlusPlus> r;
 
-#ifdef BUFFERED
 	for (intmax i = 0; i < m; i++) {
-		static uint64 bitStorage[chunkSize / sizeof(uint64)];
+		alignas(256) static char bitStorage[chunkSize / sizeof(char) * byteBits];
 
 		for (intmax j = 0; j < sc<intmax>(chunkSize / sizeof(uint64)); j++) {
-			bitStorage[j] = r.next();
+			auto v = r.next();
+			for (int i = 0; i < sc<int>(sizeof(uint64) * byteBits); i++) {
+				bitStorage[j * sizeof(uint64) * byteBits + i] = sc<char>(numToASCII((v >> i) & 1UL));
+			}
 		}
 
-		for (intmax j = 0; j < sc<intmax>(chunkSize / sizeof(uint64)); j++) {
-			p(bitStorage[j]);
-		}
+		std::cout.write(bitStorage, sizeof(bitStorage));
 	}
-#else
-	for (intmax i = 0; i < sc<intmax>(chunkSize / sizeof(uint64) * m); i++) {
-		p(r.next());
-	}
-#endif
 
 	return 0;
 }
