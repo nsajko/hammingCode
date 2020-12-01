@@ -380,11 +380,12 @@ class bitVector final {
 
 	// XORs the current instance with op.
 	void
-	exOr(const bitVector &op) {
+	maskedExOr(const bitVector &op, uint8 bit) {
+		uint8 mask = sc<uint8>(~0U) * bit;
 		auto out = std::assume_aligned<aligSize>(reinterpret_cast<uint8*>(arr.data()));
 		auto in  = std::assume_aligned<aligSize>(reinterpret_cast<const uint8*>(op.arr.data()));
 		for (intmax l = ceilDivByte(len), i = 0; i < l; i++) {
-			out[i] ^= in[i];
+			out[i] ^= in[i] & mask;
 		}
 	}
 
@@ -454,9 +455,7 @@ class bitGenMatrix final {
 		auto out = std::make_unique<bitVector<T, S>>(
 		  bitVector<T, S>(bitVector<T, S>::ConstrTypeZero::e, m[0].getLen()));
 		for (intmax len = row.getLen(), i = 0; i < len; i++) {
-			if (row.isSet(i) != 0) {
-				out->exOr(m[sc<vst>(i)]);
-			}
+			out->maskedExOr(m[sc<vst>(i)], sc<uint8>(row.isSet(i)));
 		}
 		return out;
 	}
