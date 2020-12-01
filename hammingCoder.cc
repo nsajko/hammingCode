@@ -60,6 +60,14 @@ constexpr bool useStopwatch = true;
 [[maybe_unused]] constexpr bool useStopwatch = false;
 #endif
 
+// For profiling or benchmarking the coder.
+#ifdef PRINT_LESS
+#   undef PRINT_LESS
+[[maybe_unused]] constexpr bool printLess = true;
+#else
+[[maybe_unused]] constexpr bool printLess = false;
+#endif
+
 // In bytes.
 constexpr int bitStorageAlignment = 1UL << 4;
 
@@ -386,13 +394,22 @@ class bitVector final {
 		// w is for "words", i is for bits.
 		auto l = len / wordBits;
 		for (intmax w = 0; w < l; w++) {
+			if constexpr (printLess) {
+				printBit(0, w);
+				continue;
+			}
 			for (intmax i = 0; i < wordBits; i++) {
 				printBit(i, w);
 			}
 		}
+		if constexpr (printLess) {
+			printBit(0, l);
+			goto END;
+		}
 		for (intmax i = 0; i < len % wordBits; i++) {
 			printBit(i, l);
 		}
+END:
 		std::cout << '\n';
 	}
 };
@@ -641,14 +658,18 @@ main(int argc, char *argv[]) {
 
 		// Copy blLen bits from inMsg to block.
 		bV block(inMsg, i, blLen);
-		std::cerr << "Input " << std::setw(4) << blLen << " bits: ";
-		std::cerr.flush();
-		block.print();
-		std::cout.flush();
+		if constexpr (!printLess) {
+			std::cerr << "Input " << std::setw(4) << blLen << " bits: ";
+			std::cerr.flush();
+			block.print();
+			std::cout.flush();
+		}
 
 		// Compute the output code word.
-		std::cerr << "Output: ";
-		std::cerr.flush();
+		if constexpr (!printLess) {
+			std::cerr << "Output: ";
+			std::cerr.flush();
+		}
 		if constexpr (hamCoderAlgo == HammingCoderAlgor::VeryNaive) {
 			bV(bV::ConstrTypeVeryNaive::e, block, n).print();
 		} else if constexpr (hamCoderAlgo == HammingCoderAlgor::Naive) {
@@ -660,7 +681,9 @@ main(int argc, char *argv[]) {
 			// shouldn't ever happen.
 			__builtin_trap();
 		}
-		std::cout.flush();
+		if constexpr (!printLess) {
+			std::cout.flush();
+		}
 	}
 
 	if constexpr (useStopwatch) {
