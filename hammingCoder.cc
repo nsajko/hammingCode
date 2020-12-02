@@ -119,6 +119,12 @@ lexDecimalASCII(const char *s) {
 	return r;
 }
 
+// Returns a character or EOF.
+template<typename X>
+concept Reader = requires(X r) {
+	{r()} -> std::same_as<int>;
+};
+
 // A bit storage type is defined by the unsigned integer word type T, and the alignment n
 // of the bit storage, in bytes.
 template<typename T, int n>
@@ -291,6 +297,7 @@ class bitVector final {
 
 	// Fills the bitVector with input from r.
 	template<typename X>
+	requires Reader<X>
 	bitVector(X r):
 	bitVector(bitVector<word, aligSize>::ConstrTypeAlloc::e, initialInputMessageCapacity) {
 		for (;;) {
