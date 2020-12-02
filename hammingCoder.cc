@@ -93,6 +93,11 @@ hammingN(intmax k) {
 	return sc<intmax>(K + std::bit_width(K + std::bit_width(K)));
 }
 
+[[nodiscard]] uintmax
+numToASCII(uintmax a) {
+	return a | 0x30UL;
+}
+
 // Converts an ASCII char to the number it represents.
 [[nodiscard]] intmax
 ASCIIToNum(intmax c) {
@@ -194,12 +199,6 @@ class bitVector final {
 	[[nodiscard]] word &
 	operator[](intmax i) {
 		return arr[sc<vst>(i / alignedWords)][i % alignedWords];
-	}
-
-	// Shows the bit i in word w as '0' or '1' on stdout.
-	void
-	printBit(intmax i, intmax w) const {
-		std::cout << sc<bool>(((*this)[w] >> i) & 1UL);
 	}
 
 	public:
@@ -392,26 +391,20 @@ class bitVector final {
 	// Shows the bit vector on stdout.
 	void
 	print() const {
-		// w is for "words", i is for bits.
-		auto l = len / wordBits;
-		for (intmax w = 0; w < l; w++) {
-			if constexpr (printLess) {
-				printBit(0, w);
-				continue;
-			}
-			for (intmax i = 0; i < wordBits; i++) {
-				printBit(i, w);
-			}
-		}
 		if constexpr (printLess) {
-			printBit(0, l);
-			goto END;
+			for (intmax i = 0; i < len; i += wordBits + 1) {
+				std::cout.put(sc<char>(
+				  numToASCII(((*this)[i / wordBits] >> (i % wordBits)) & 1UL)));
+			}
+			std::cout.put('\n');
+			return;
 		}
-		for (intmax i = 0; i < len % wordBits; i++) {
-			printBit(i, l);
+		using chars = std::vector<char>;
+		chars buf(sc<chars::size_type>(len));
+		for (intmax i = 0; i < len; i++) {
+			buf[sc<chars::size_type>(i)] = sc<char>(numToASCII(((*this)[i / wordBits] >> (i % wordBits)) & 1UL));
 		}
-END:
-		std::cout << '\n';
+		std::cout.write(buf.data(), len).put('\n');
 	}
 };
 
@@ -466,7 +459,7 @@ class bitGenMatrix final {
 		for (intmax r = 0; r < rows; r++) {
 			m[sc<vst>(r)].print();
 		}
-		std::cout << '\n';
+		std::cout.put('\n');
 	}
 };
 
