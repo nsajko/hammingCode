@@ -51,14 +51,14 @@ enum class HammingCoderAlgor {
 
 #ifdef FUZZ_AGAINST_VERY_NAIVE
 #   undef FUZZ_AGAINST_VERY_NAIVE
-constexpr bool fuzzAgainstVeryNaive = true;
+[[maybe_unused]] constexpr bool fuzzAgainstVeryNaive = true;
 #else
 [[maybe_unused]] constexpr bool fuzzAgainstVeryNaive = false;
 #endif
 
 #ifdef USE_STOPWATCH
 #   undef USE_STOPWATCH
-constexpr bool useStopwatch = true;
+[[maybe_unused]] constexpr bool useStopwatch = true;
 #else
 [[maybe_unused]] constexpr bool useStopwatch = false;
 #endif
