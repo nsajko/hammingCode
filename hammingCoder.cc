@@ -454,7 +454,10 @@ class bitGenMatrix final {
 	rowMulMat(const bitVector<T, S> &row) const {
 		auto out = std::make_unique<bitVector<T, S>>(
 		  bitVector<T, S>(bitVector<T, S>::ConstrTypeZero::e, m[0].getLen()));
+
+		// Add relevant rows of the matrix to out.
 		for (intmax len = row.getLen(), i = 0; i < len; i++) {
+			// Add to out the row m[i] multiplied by the bit row[i].
 			out->maskedExOr(m[sc<vst>(i)], sc<uint8>(row.isSet(i)));
 		}
 		return out;
