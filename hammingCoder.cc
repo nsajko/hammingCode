@@ -372,11 +372,11 @@ class bitVector final {
 		// Notice how similar this is to the bitGenMatrix constructor.
 
 		// The fact that in.len can be smaller than hammingK(n) (which can happen with the
-		// last block of input) complicates the implementation somewhat.
+		// last chunk of input) complicates the implementation somewhat.
 		// in.len can be smaller than hammingK(n), in which case we need to decrease n
 		// accordingly.
 		//
-		// In our program this only happens with the last block of input to be coded.
+		// In our program this only happens with the last chunk of input to be coded.
 		n = hammingN(in.len);
 
 		for (intmax nonPowerOfTwoColumns = 0, pow = 1, j = 0; j < n; j++) {
@@ -509,10 +509,10 @@ namespace {
 template<typename T, int S, typename X>
 requires BitStorage<T, S>
 std::vector<bitVector<T, S>>
-makeBitVectorVectorWithInput(X r, intmax blockSize) {
+makeBitVectorVectorWithInput(X r, intmax chunkSize) {
 	std::vector<bitVector<T, S>> res;
 	res.reserve(1UL << 4);
-	res.emplace_back(bitVector<T, S>(bitVector<T, S>::ConstrTypeZero::e, blockSize));
+	res.emplace_back(bitVector<T, S>(bitVector<T, S>::ConstrTypeZero::e, chunkSize));
 	intmax len = 0;
 	for (typename decltype(res)::size_type i = 0;;) {
 		int c = r();
@@ -523,11 +523,11 @@ makeBitVectorVectorWithInput(X r, intmax blockSize) {
 			break;
 		}
 
-		if (len == blockSize) {
+		if (len == chunkSize) {
 			len = 0;
 			i++;
 			res.emplace_back(bitVector<T, S>(
-			  bitVector<T, S>::ConstrTypeZero::e, blockSize));
+			  bitVector<T, S>::ConstrTypeZero::e, chunkSize));
 		}
 		res[i].set(ASCIIToNum(c), len);
 		len++;
@@ -588,17 +588,17 @@ LLVMFuzzerTestOneInput(const uint8_t *data, size_t size) {
 		if (iMsgLen - i < blLen) {
 			blLen = iMsgLen - i;
 		}
-		bV block(inMsg, i, blLen);
-		if (!block.equal(inMsgTest[I])) {
+		bV iChunk(inMsg, i, blLen);
+		if (!iChunk.equal(inMsgTest[I])) {
 			__builtin_trap();
 		}
 		if constexpr (fuzzAgainstVeryNaive) {
-			if (!genMat.rowMulMat(block).equal(bV(bV::ConstrTypeVeryNaive::e, block, n))) {
+			if (!genMat.rowMulMat(iChunk).equal(bV(bV::ConstrTypeVeryNaive::e, iChunk, n))) {
 				__builtin_trap();
 			}
 			continue;
 		}
-		if (!genMat.rowMulMat(block).equal(bV(block, n))) {
+		if (!genMat.rowMulMat(iChunk).equal(bV(iChunk, n))) {
 			__builtin_trap();
 		}
 	}
@@ -681,12 +681,12 @@ main(int argc, char *argv[]) {
 			blLen = iMsgLen - i;
 		}
 
-		// Copy blLen bits from inMsg to block.
-		bV block(inMsg, i, blLen);
+		// Copy blLen bits from inMsg to iChunk.
+		bV iChunk(inMsg, i, blLen);
 		if constexpr (!printLess) {
 			std::cerr << "Input " << std::setw(4) << blLen << " bits: ";
 			std::cerr.flush();
-			block.print();
+			iChunk.print();
 			std::cout.flush();
 		}
 
@@ -696,13 +696,13 @@ main(int argc, char *argv[]) {
 			std::cerr.flush();
 		}
 		if constexpr (hamCoderAlgo == HammingCoderAlgor::VeryNaive) {
-			bV(bV::ConstrTypeVeryNaive::e, block, n).print();
+			bV(bV::ConstrTypeVeryNaive::e, iChunk, n).print();
 		} else if constexpr (hamCoderAlgo == HammingCoderAlgor::Cols) {
-			bV(block, n).print();
+			bV(iChunk, n).print();
 		} else if constexpr (hamCoderAlgo == HammingCoderAlgor::RowsDense) {
-			genMat.rowMulMat(block).print();
+			genMat.rowMulMat(iChunk).print();
 		} else if constexpr (hamCoderAlgo == HammingCoderAlgor::Dummy) {
-			bV(bV::ConstrTypeDummyCoder::e, block, n).print();
+			bV(bV::ConstrTypeDummyCoder::e, iChunk, n).print();
 		} else {
 			// We should have covered all enumeration constants above, so this
 			// shouldn't ever happen.
