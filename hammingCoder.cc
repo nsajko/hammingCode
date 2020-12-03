@@ -714,13 +714,13 @@ main(int argc, char *argv[]) {
 	}
 
 	if constexpr (useStopwatch) {
-		auto hca = "VeryNaive";
+		auto hca = "VeryNaive ";
 		if constexpr (hamCoderAlgo == HammingCoderAlgor::Cols) {
-			hca = "Cols";
+			hca = "Cols      ";
 		} else if constexpr (hamCoderAlgo == HammingCoderAlgor::RowsDense) {
-			hca = "RowsDense";
+			hca = "RowsDense ";
 		} else if constexpr (hamCoderAlgo == HammingCoderAlgor::Dummy) {
-			hca = "Dummy";
+			hca = "Dummy     ";
 		}
 		std::ofstream("/tmp/hammingCoderStopwatch", std::ios_base::app) <<
 		  hca << ' ' << bitStorageAlignment << ' ' << n << ": " <<
