@@ -35,8 +35,8 @@ constexpr intmax byteBits = 8;
 
 // Hamming code algorithms.
 enum class HammingCoderAlgor {
-	GenMat,
-	Naive,
+	RowsDense,
+	Cols,
 	VeryNaive,
 
 	// Incorrect but fast, to get an upper limit on possible throughput.
@@ -365,7 +365,8 @@ class bitVector final {
 		}
 	}
 
-	// A naive Hamming code coder, doesn't use matrix multiplication.
+	// A Hamming code coder that iterates through the columns of an imagined
+	// generator matrix in the outermost loop.
 	bitVector(bitVector<word, aligSize> &in, intmax n):
 	bitVector(bitVector<word, aligSize>::ConstrTypeZero::e, n) {
 		// Notice how similar this is to the bitGenMatrix constructor.
@@ -471,7 +472,8 @@ class bitGenMatrix final {
 		}
 	}
 
-	// Multiplies the row-vector with the matrix.
+	// Multiplies the row-vector with the matrix, iterating through the rows of
+	// the generator matrix in the outermost loop.
 	[[nodiscard]] bitVector<T, S>
 	rowMulMat(const bitVector<T, S> &row) const {
 		bitVector<T, S> out(bitVector<T, S>::ConstrTypeZero::e, m[0].getLen());
@@ -659,7 +661,7 @@ main(int argc, char *argv[]) {
 
 	// Make and show the code's generator matrix.
 	bitGenMatrix<bWord, bitStorageAlignment> genMat(n);
-	if constexpr (hamCoderAlgo == HammingCoderAlgor::GenMat) {
+	if constexpr (hamCoderAlgo == HammingCoderAlgor::RowsDense) {
 		std::cerr << "\nThe generator matrix for the code:\n\n";
 		std::cerr.flush();
 		genMat.print();
@@ -695,9 +697,9 @@ main(int argc, char *argv[]) {
 		}
 		if constexpr (hamCoderAlgo == HammingCoderAlgor::VeryNaive) {
 			bV(bV::ConstrTypeVeryNaive::e, block, n).print();
-		} else if constexpr (hamCoderAlgo == HammingCoderAlgor::Naive) {
+		} else if constexpr (hamCoderAlgo == HammingCoderAlgor::Cols) {
 			bV(block, n).print();
-		} else if constexpr (hamCoderAlgo == HammingCoderAlgor::GenMat) {
+		} else if constexpr (hamCoderAlgo == HammingCoderAlgor::RowsDense) {
 			genMat.rowMulMat(block).print();
 		} else if constexpr (hamCoderAlgo == HammingCoderAlgor::Dummy) {
 			bV(bV::ConstrTypeDummyCoder::e, block, n).print();
@@ -713,10 +715,10 @@ main(int argc, char *argv[]) {
 
 	if constexpr (useStopwatch) {
 		auto hca = "VeryNaive";
-		if constexpr (hamCoderAlgo == HammingCoderAlgor::Naive) {
-			hca = "Naive";
-		} else if constexpr (hamCoderAlgo == HammingCoderAlgor::GenMat) {
-			hca = "GenMat";
+		if constexpr (hamCoderAlgo == HammingCoderAlgor::Cols) {
+			hca = "Cols";
+		} else if constexpr (hamCoderAlgo == HammingCoderAlgor::RowsDense) {
+			hca = "RowsDense";
 		} else if constexpr (hamCoderAlgo == HammingCoderAlgor::Dummy) {
 			hca = "Dummy";
 		}

@@ -3,7 +3,7 @@ set -u
 
 cxx_opt='-std=c++20 -Werror -Wall -Wextra -Wno-unused-function -Wcast-align -Wconversion -Wold-style-cast -g -march=native -O3 -fno-exceptions'
 
-opt="-o hammingCoder-$1 $cxx_opt -D HAM_COD_ALG=HammingCoderAlgor::GenMat hammingCoder.cc"
+opt="-o hammingCoder-$1 $cxx_opt -D HAM_COD_ALG=HammingCoderAlgor::RowsDense hammingCoder.cc"
 
 polly_opt=
 # polly_opt="-mllvm -polly"
