@@ -38,6 +38,9 @@ enum class HammingCoderAlgor {
 	GenMat,
 	Naive,
 	VeryNaive,
+
+	// Incorrect but fast, to get an upper limit on possible throughput.
+	Dummy,
 };
 
 // Macros are used for conditional compilation, but the goal is to replace them with
@@ -213,6 +216,7 @@ class bitVector final {
 	enum class ConstrTypeAlloc {e};
 	enum class ConstrTypeZero {e};
 	enum class ConstrTypeVeryNaive {e};
+	enum class ConstrTypeDummyCoder {e};
 
 	[[nodiscard]] intmax
 	getLen() const {
@@ -314,6 +318,24 @@ class bitVector final {
 			}
 			set(ASCIIToNum(c), len);
 			len++;
+		}
+	}
+
+	// A dummy coder, not actually a coder, just has the coder interface. Faster than
+	// a true coder.
+	bitVector([[maybe_unused]] ConstrTypeDummyCoder unused, bitVector<word, aligSize> &in, intmax n):
+	bitVector(bitVector<word, aligSize>::ConstrTypeZero::e, n) {
+		n = hammingN(in.len);
+
+		auto nWords = ceilDivWord(len);
+		for (intmax i = 0; i < nWords; i++) {
+			auto dat = in[i / 2] ^ sc<word>(0xdcbfcdafbe972023UL);
+			(*this)[i] = dat;
+			i++;
+			if (i == nWords) {
+				break;
+			}
+			(*this)[i] = ~dat;
 		}
 	}
 
@@ -678,6 +700,8 @@ main(int argc, char *argv[]) {
 			bV(block, n).print();
 		} else if constexpr (hamCoderAlgo == HammingCoderAlgor::GenMat) {
 			genMat.rowMulMat(block)->print();
+		} else if constexpr (hamCoderAlgo == HammingCoderAlgor::Dummy) {
+			bV(bV::ConstrTypeDummyCoder::e, block, n).print();
 		} else {
 			// We should have covered all enumeration constants above, so this
 			// shouldn't ever happen.
@@ -694,6 +718,8 @@ main(int argc, char *argv[]) {
 			hca = "Naive";
 		} else if constexpr (hamCoderAlgo == HammingCoderAlgor::GenMat) {
 			hca = "GenMat";
+		} else if constexpr (hamCoderAlgo == HammingCoderAlgor::Dummy) {
+			hca = "Dummy";
 		}
 		std::ofstream("/tmp/hammingCoderStopwatch", std::ios_base::app) <<
 		  hca << ' ' << bitStorageAlignment << ' ' << n << ": " <<
