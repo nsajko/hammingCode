@@ -472,15 +472,14 @@ class bitGenMatrix final {
 	}
 
 	// Multiplies the row-vector with the matrix.
-	[[nodiscard]] std::unique_ptr<bitVector<T, S>>
+	[[nodiscard]] bitVector<T, S>
 	rowMulMat(const bitVector<T, S> &row) const {
-		auto out = std::make_unique<bitVector<T, S>>(
-		  bitVector<T, S>(bitVector<T, S>::ConstrTypeZero::e, m[0].getLen()));
+		bitVector<T, S> out(bitVector<T, S>::ConstrTypeZero::e, m[0].getLen());
 
 		// Add relevant rows of the matrix to out.
 		for (intmax len = row.getLen(), i = 0; i < len; i++) {
 			// Add to out the row m[i] multiplied by the bit row[i].
-			out->maskedExOr(m[sc<vst>(i)], sc<uint8>(row.isSet(i)));
+			out.maskedExOr(m[sc<vst>(i)], sc<uint8>(row.isSet(i)));
 		}
 		return out;
 	}
@@ -592,12 +591,12 @@ LLVMFuzzerTestOneInput(const uint8_t *data, size_t size) {
 			__builtin_trap();
 		}
 		if constexpr (fuzzAgainstVeryNaive) {
-			if (!(*genMat.rowMulMat(block)).equal(bV(bV::ConstrTypeVeryNaive::e, block, n))) {
+			if (!genMat.rowMulMat(block).equal(bV(bV::ConstrTypeVeryNaive::e, block, n))) {
 				__builtin_trap();
 			}
 			continue;
 		}
-		if (!(*genMat.rowMulMat(block)).equal(bV(block, n))) {
+		if (!genMat.rowMulMat(block).equal(bV(block, n))) {
 			__builtin_trap();
 		}
 	}
@@ -699,7 +698,7 @@ main(int argc, char *argv[]) {
 		} else if constexpr (hamCoderAlgo == HammingCoderAlgor::Naive) {
 			bV(block, n).print();
 		} else if constexpr (hamCoderAlgo == HammingCoderAlgor::GenMat) {
-			genMat.rowMulMat(block)->print();
+			genMat.rowMulMat(block).print();
 		} else if constexpr (hamCoderAlgo == HammingCoderAlgor::Dummy) {
 			bV(bV::ConstrTypeDummyCoder::e, block, n).print();
 		} else {
