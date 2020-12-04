@@ -223,6 +223,15 @@ class bitVector final {
 		return len;
 	}
 
+	void
+	resize(intmax l) {
+		if (len < l) {
+			std::cerr << "resize: enlarging bit vectors isn't implemented\n";
+			__builtin_trap();
+		}
+		len = l;
+	}
+
 	// The set parameter should be either 0 or 1.
 	//
 	// If set is 0, effectively nothing is done.
@@ -400,7 +409,10 @@ class bitVector final {
 
 	// Checks equality between bitVectors. Used just for testing.
 	[[nodiscard]] bool
-	equal(const bitVector<word, aligSize> &v) {
+	equal(const bitVector<word, aligSize> &v) const {
+		if (len != v.len) {
+			return false;
+		}
 		for (intmax l = ceilDivWord(len), i = 0; i < l; i++) {
 			if ((*this)[i] != v[i]) {
 				return false;
@@ -534,6 +546,7 @@ makeBitVectorVectorWithInput(X r, intmax chunkSize) {
 		res[i].set(ASCIIToNum(c), len);
 		len++;
 	}
+	res[res.size() - 1].resize(len);
 	return res;
 }
 
