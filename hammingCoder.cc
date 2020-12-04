@@ -659,7 +659,6 @@ main(int argc, char *argv[]) {
 	std::cerr << "\nInput source message:\n";
 	std::cerr.flush();
 	inMsg.print();
-	std::cout.flush();
 
 	// Make and show the code's generator matrix.
 	bitGenMatrix<bWord, bitStorageAlignment> genMat(n);
@@ -670,7 +669,6 @@ main(int argc, char *argv[]) {
 	}
 
 	std::cout << '\n';
-	std::cout.flush();
 
 	std::cerr << "To encode the entire source input string into codewords, we divide the\n"
 	             "input string into parts of k or less bits, where the last part's\n"
@@ -689,7 +687,6 @@ main(int argc, char *argv[]) {
 			std::cerr << "Input " << std::setw(4) << blLen << " bits: ";
 			std::cerr.flush();
 			iChunk.print();
-			std::cout.flush();
 		}
 
 		// Compute the output code word.
@@ -709,9 +706,6 @@ main(int argc, char *argv[]) {
 			// We should have covered all enumeration constants above, so this
 			// shouldn't ever happen.
 			__builtin_trap();
-		}
-		if constexpr (!printLess) {
-			std::cout.flush();
 		}
 	}
 
