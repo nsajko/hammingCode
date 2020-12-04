@@ -49,13 +49,6 @@ enum class HammingCoderAlgor {
 [[maybe_unused]] constexpr HammingCoderAlgor hamCoderAlgo = HAM_COD_ALG;
 #undef HAM_COD_ALG
 
-#ifdef FUZZ_AGAINST_VERY_NAIVE
-#   undef FUZZ_AGAINST_VERY_NAIVE
-[[maybe_unused]] constexpr bool fuzzAgainstVeryNaive = true;
-#else
-[[maybe_unused]] constexpr bool fuzzAgainstVeryNaive = false;
-#endif
-
 #ifdef USE_STOPWATCH
 #   undef USE_STOPWATCH
 [[maybe_unused]] constexpr bool useStopwatch = true;
@@ -96,9 +89,10 @@ hammingN(intmax k) {
 	return sc<intmax>(K + std::bit_width(K + std::bit_width(K)));
 }
 
-[[nodiscard]] uintmax
-numToASCII(uintmax a) {
-	return a | 0x30UL;
+template<typename T>
+[[nodiscard]] char
+numToASCII(T a) {
+	return sc<char>(sc<uintmax>(a) | 0x30UL);
 }
 
 // Converts an ASCII char to the number it represents.
@@ -349,60 +343,21 @@ class bitVector final {
 		}
 	}
 
-	// A very naive Hamming code coder, doesn't use matrix multiplication.
-	bitVector([[maybe_unused]] ConstrTypeVeryNaive unused,
-	  const bitVector<word, aligSize> &in, intmax n):
-	bitVector(bitVector<word, aligSize>::ConstrTypeZero::e, n) {
-		n = hammingN(in.len);
-
-		// Copy the data bits from the input.
-		for (intmax I = 0, pow = 4, i = 3; i <= n; i++) {
-			if (i == pow) {
-				pow <<= 1;
-				continue;
-			}
-
-			set(in.isSet(I), i - 1);
-			I++;
-		}
-
-		// Create parity bits.
-		for (intmax pow = 1; pow <= n; pow <<= 1) {
-			for (intmax j = pow + 1; j <= n; j++) {
-				if ((j & pow) != 0) {
-					exOrBit(isSet(j - 1), pow - 1);
+	// Copies the instance's bits one bit per char into a std::vector<char>.
+	[[nodiscard]] std::vector<char>
+	fatten() const {
+		std::vector<char> r(sc<vst>(len));
+		for (intmax i = 0;; i++) {
+			auto w = (*this)[i];
+			for (int j = 0;; j++) {
+				auto I = i * wordBits + j;
+				if (I == len) {
+					return r;
 				}
-			}
-		}
-	}
-
-	// A Hamming code coder that iterates through the columns of an imagined
-	// generator matrix in the outermost loop.
-	bitVector(const bitVector<word, aligSize> &in, intmax n):
-	bitVector(bitVector<word, aligSize>::ConstrTypeZero::e, n) {
-		// Notice how similar this is to the bitGenMatrix constructor.
-
-		// The fact that in.len can be smaller than hammingK(n) (which can happen with the
-		// last chunk of input) complicates the implementation somewhat.
-		// in.len can be smaller than hammingK(n), in which case we need to decrease n
-		// accordingly.
-		//
-		// In our program this only happens with the last chunk of input to be coded.
-		n = hammingN(in.len);
-
-		for (intmax nonPowerOfTwoColumns = 0, pow = 1, j = 0; j < n; j++) {
-			if (j + 1 == pow) {
-				// j + 1 is a power of two.
-				for (intmax i = pow + 1; i <= n; i++) {
-					if ((i & pow) != 0) {
-						exOrBit(in.isSet(hammingK(i) - 1), j);
-					}
+				if (j == wordBits) {
+					break;
 				}
-				pow <<= 1;
-			} else {
-				// j + 1 is not a power of two.
-				set(in.isSet(hammingK(j + 1) - 1), j);
-				nonPowerOfTwoColumns++;
+				r[sc<vst>(I)] = (w >> j) & 1UL;
 			}
 		}
 	}
@@ -437,8 +392,8 @@ class bitVector final {
 	print() const {
 		if constexpr (printLess) {
 			for (intmax i = 0; i < len; i += wordBits + 1) {
-				std::cout.put(sc<char>(
-				  numToASCII(((*this)[i / wordBits] >> (i % wordBits)) & 1UL)));
+				std::cout.put(
+				  numToASCII(((*this)[i / wordBits] >> (i % wordBits)) & 1UL));
 			}
 			std::cout.put('\n');
 			return;
@@ -446,11 +401,103 @@ class bitVector final {
 		using chars = std::vector<char>;
 		chars buf(sc<chars::size_type>(len));
 		for (intmax i = 0; i < len; i++) {
-			buf[sc<chars::size_type>(i)] = sc<char>(numToASCII(((*this)[i / wordBits] >> (i % wordBits)) & 1UL));
+			buf[sc<chars::size_type>(i)] = numToASCII(((*this)[i / wordBits] >> (i % wordBits)) & 1UL);
 		}
 		std::cout.write(buf.data(), len).put('\n');
 	}
 };
+
+// A very naive Hamming code coder, doesn't use matrix multiplication.
+[[nodiscard]] std::vector<char>
+hamCodeNaive(const std::vector<char> &in, intmax n) {
+	using vst = std::vector<char>::size_type;
+	std::vector<char> r(sc<vst>(n), 0);
+	n = hammingN(sc<intmax>(in.size()));
+
+	// Copy the data bits from the input.
+	for (intmax I = 0, pow = 4, i = 3; i <= n; i++) {
+		if (i == pow) {
+			pow <<= 1;
+			continue;
+		}
+
+		r[sc<vst>(i - 1)] = in[sc<vst>(I)];
+		I++;
+	}
+
+	// Create parity bits.
+	for (intmax pow = 1; pow <= n; pow <<= 1) {
+		for (intmax j = pow + 1; j <= n; j++) {
+			if ((j & pow) != 0) {
+				r[sc<vst>(pow - 1)] ^= r[sc<vst>(j - 1)];
+			}
+		}
+	}
+
+	return r;
+}
+
+// A Hamming code coder that iterates through the columns of an imagined
+// generator matrix in the outermost loop.
+[[nodiscard]] std::vector<char>
+hamCodeCols(const std::vector<char> &in, intmax n) {
+	// Notice how similar this is to the bitGenMatrix constructor.
+
+	using vst = std::vector<char>::size_type;
+
+	std::vector<char> r(sc<vst>(n), 0);
+
+	// The fact that in.len can be smaller than hammingK(n) (which can happen with the
+	// last chunk of input) complicates the implementation somewhat.
+	// in.len can be smaller than hammingK(n), in which case we need to decrease n
+	// accordingly.
+	//
+	// In our program this only happens with the last chunk of input to be coded.
+	n = hammingN(sc<intmax>(in.size()));
+
+	for (intmax nonPowerOfTwoColumns = 0, pow = 1, j = 0; j < n; j++) {
+		if (j + 1 == pow) {
+			// j + 1 is a power of two.
+			for (intmax i = pow + 1; i <= n; i++) {
+				if ((i & pow) != 0) {
+					r[sc<vst>(j)] ^= in[sc<vst>(hammingK(i) - 1)];
+				}
+			}
+			pow <<= 1;
+		} else {
+			// j + 1 is not a power of two.
+			r[sc<vst>(j)] = in[sc<vst>(hammingK(j + 1) - 1)];
+			nonPowerOfTwoColumns++;
+		}
+	}
+
+	return r;
+}
+
+void
+printFatBitVector(const std::vector<char> &bits) {
+	using vst = std::vector<char>::size_type;
+	auto l = bits.size();
+	if constexpr (printLess) {
+		// Here we should do something comparable to what's done in
+		// bitVector.print, and we don't know how many bits there are in
+		// bitVector's word, but assuming 64 seems fine for now.
+
+		// ceiling(l / 64)
+		l = (l - 1) / 64 + 1;
+
+		for (intmax i = 0; sc<vst>(i) < l; i += 64 + 1) {
+			std::cout.put(numToASCII(bits[sc<vst>(i)]));
+		}
+		std::cout.put('\n');
+		return;
+	}
+	std::vector<char> ascii(l);
+	for (intmax i = 0; sc<decltype(l)>(i) < l; i++) {
+		ascii[sc<vst>(i)] = numToASCII(bits[sc<vst>(i)]);
+	}
+	std::cout.write(ascii.data(), sc<std::streamsize>(ascii.size())).put('\n');
+}
 
 template<typename T, int S>
 requires BitStorage<T, S>
@@ -607,13 +654,11 @@ LLVMFuzzerTestOneInput(const uint8_t *data, size_t size) {
 		if (!iChunk.equal(inMsgTest[I])) {
 			__builtin_trap();
 		}
-		if constexpr (fuzzAgainstVeryNaive) {
-			if (!genMat.rowMulMat(iChunk).equal(bV(bV::ConstrTypeVeryNaive::e, iChunk, n))) {
-				__builtin_trap();
-			}
-			continue;
+		std::vector<char> iChunkFat = iChunk.fatten(), naiveResult = hamCodeNaive(iChunkFat, n);
+		if (!(naiveResult == genMat.rowMulMat(iChunk).fatten())) {
+			__builtin_trap();
 		}
-		if (!genMat.rowMulMat(iChunk).equal(bV(iChunk, n))) {
+		if (!(naiveResult == hamCodeCols(iChunkFat, n))) {
 			__builtin_trap();
 		}
 	}
@@ -694,12 +739,24 @@ main(int argc, char *argv[]) {
 			blLen = iMsgLen - i;
 		}
 
-		// Copy blLen bits from inMsg to iChunk.
+		constexpr bool usingFatBitVectors = hamCoderAlgo == HammingCoderAlgor::Cols ||
+		                                    hamCoderAlgo == HammingCoderAlgor::VeryNaive;
+
+		// Copy blLen bits from inMsg to iChunk and iChunkFat. Whether iChunk or
+		// iChunkFat is used is determined at compilation time.
 		bV iChunk(inMsg, i, blLen);
+		std::vector<char> iChunkFat;
+		if constexpr (usingFatBitVectors) {
+			iChunkFat = iChunk.fatten();
+		}
 		if constexpr (!printLess) {
 			std::cerr << "Input " << std::setw(4) << blLen << " bits: ";
 			std::cerr.flush();
-			iChunk.print();
+			if constexpr (usingFatBitVectors) {
+				printFatBitVector(iChunkFat);
+			} else {
+				iChunk.print();
+			}
 		}
 
 		// Compute the output code word.
@@ -708,9 +765,9 @@ main(int argc, char *argv[]) {
 			std::cerr.flush();
 		}
 		if constexpr (hamCoderAlgo == HammingCoderAlgor::VeryNaive) {
-			bV(bV::ConstrTypeVeryNaive::e, iChunk, n).print();
+			printFatBitVector(hamCodeNaive(iChunkFat, n));
 		} else if constexpr (hamCoderAlgo == HammingCoderAlgor::Cols) {
-			bV(iChunk, n).print();
+			printFatBitVector(hamCodeCols(iChunkFat, n));
 		} else if constexpr (hamCoderAlgo == HammingCoderAlgor::RowsDense) {
 			genMat.rowMulMat(iChunk).print();
 		} else if constexpr (hamCoderAlgo == HammingCoderAlgor::Dummy) {
