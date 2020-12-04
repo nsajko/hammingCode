@@ -260,7 +260,7 @@ class bitVector final {
 
 	// Copies a contiguous range of l bits from in starting at index i to a new bitVector.
 	// The following relation must hold: out_len_bit <= in.len - in_off_bit.
-	bitVector(bitVector<word, aligSize> &in, intmax in_off_bit, intmax out_len_bit):
+	bitVector(const bitVector<word, aligSize> &in, intmax in_off_bit, intmax out_len_bit):
 	bitVector(bitVector<word, aligSize>::ConstrTypeZero::e, out_len_bit) {
 		intmax in_len_bit = in.len, in_off_wrd = in_off_bit / wordBits, out_off_wrd = 0,
 		     out_len_wrd = ceilDivWord(out_len_bit), in_len_wrd = ceilDivWord(in.len);
@@ -323,7 +323,8 @@ class bitVector final {
 
 	// A dummy coder, not actually a coder, just has the coder interface. Faster than
 	// a true coder.
-	bitVector([[maybe_unused]] ConstrTypeDummyCoder unused, bitVector<word, aligSize> &in, intmax n):
+	bitVector([[maybe_unused]] ConstrTypeDummyCoder unused,
+	  const bitVector<word, aligSize> &in, intmax n):
 	bitVector(bitVector<word, aligSize>::ConstrTypeZero::e, n) {
 		n = hammingN(in.len);
 
@@ -340,7 +341,8 @@ class bitVector final {
 	}
 
 	// A very naive Hamming code coder, doesn't use matrix multiplication.
-	bitVector([[maybe_unused]] ConstrTypeVeryNaive unused, bitVector<word, aligSize> &in, intmax n):
+	bitVector([[maybe_unused]] ConstrTypeVeryNaive unused,
+	  const bitVector<word, aligSize> &in, intmax n):
 	bitVector(bitVector<word, aligSize>::ConstrTypeZero::e, n) {
 		n = hammingN(in.len);
 
@@ -367,7 +369,7 @@ class bitVector final {
 
 	// A Hamming code coder that iterates through the columns of an imagined
 	// generator matrix in the outermost loop.
-	bitVector(bitVector<word, aligSize> &in, intmax n):
+	bitVector(const bitVector<word, aligSize> &in, intmax n):
 	bitVector(bitVector<word, aligSize>::ConstrTypeZero::e, n) {
 		// Notice how similar this is to the bitGenMatrix constructor.
 
