@@ -507,13 +507,13 @@ template<typename T, int S>
 requires BitStorage<T, S>
 class GenMatRowsDense final {
 	std::vector<BitVector<T, S>> m;
-	intmax rows;
 	using vst = typename std::vector<BitVector<T, S>>::size_type;
 
 	public:
 
 	// Makes the generator matrix for the [n, k] Hamming code.
-	GenMatRowsDense(intmax n): rows(hammingK(n)) {
+	GenMatRowsDense(intmax n) {
+		intmax rows = hammingK(n);
 		m.reserve(sc<vst>(rows));
 		for (intmax i = 0; i < rows; i++) {
 			m.emplace_back(BitVector<T, S>(BitVector<T, S>::ConstrTypeZero::e, n));
@@ -554,6 +554,7 @@ class GenMatRowsDense final {
 	// Prints the matrix.
 	void
 	print() const {
+		intmax rows = m.size();
 		for (intmax r = 0; r < rows; r++) {
 			m[sc<vst>(r)].print();
 		}
