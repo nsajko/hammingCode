@@ -427,6 +427,10 @@ hamCodeNaive(const std::vector<char> &in, intmax n) {
 
 	// Create parity bits.
 	for (intmax pow = 1; pow <= n; pow <<= 1) {
+		// TODO: in the loop below it is possible to halve the number of
+		// iterations, but I haven't been able to do that without inducing
+		// huge slowdowns, instead of speedups. Probably has something to do with
+		// autovectorization.
 		for (intmax j = pow + 1; j <= n; j++) {
 			if ((j & pow) != 0) {
 				r[sc<vst>(pow - 1)] ^= r[sc<vst>(j - 1)];
