@@ -445,7 +445,7 @@ hamCodeNaive(const std::vector<char> &in, intmax n) {
 // generator matrix in the outermost loop.
 [[nodiscard]] std::vector<char>
 hamCodeCols(const std::vector<char> &in, intmax n) {
-	// Notice how similar this is to the bitGenMatrix constructor.
+	// Notice how similar this is to the GenMatRowsDense constructor.
 
 	using vst = std::vector<char>::size_type;
 
@@ -505,7 +505,7 @@ printFatBitVector(const std::vector<char> &bits) {
 
 template<typename T, int S>
 requires BitStorage<T, S>
-class bitGenMatrix final {
+class GenMatRowsDense final {
 	std::vector<bitVector<T, S>> m;
 	intmax rows;
 	using vst = typename std::vector<bitVector<T, S>>::size_type;
@@ -513,7 +513,7 @@ class bitGenMatrix final {
 	public:
 
 	// Makes the generator matrix for the [n, k] Hamming code.
-	bitGenMatrix(intmax n): rows(hammingK(n)) {
+	GenMatRowsDense(intmax n): rows(hammingK(n)) {
 		m.reserve(sc<vst>(rows));
 		for (intmax i = 0; i < rows; i++) {
 			m.emplace_back(bitVector<T, S>(bitVector<T, S>::ConstrTypeZero::e, n));
@@ -648,7 +648,7 @@ LLVMFuzzerTestOneInput(const uint8_t *data, size_t size) {
 
 	bV inMsg(fakeGet);
 	auto inMsgTest = makeBitVectorVectorWithInput<bWord, align>(fakeGet, k);
-	bitGenMatrix<bWord, align> genMat(n);
+	GenMatRowsDense<bWord, align> genMat(n);
 	decltype(inMsgTest)::size_type I = 0;
 	for (intmax blLen = k, iMsgLen = inMsg.getLen(), i = 0; i < iMsgLen; i += k, I++) {
 		if (iMsgLen - i < blLen) {
@@ -723,7 +723,7 @@ main(int argc, char *argv[]) {
 	inMsg.print();
 
 	// Make and show the code's generator matrix.
-	bitGenMatrix<bWord, bitStorageAlignment> genMat(n);
+	GenMatRowsDense<bWord, bitStorageAlignment> genMat(n);
 	if constexpr (hamCoderAlgo == HammingCoderAlgor::RowsDense) {
 		std::cerr << "\nThe generator matrix for the code:\n\n";
 		std::cerr.flush();
