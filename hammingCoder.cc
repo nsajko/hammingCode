@@ -457,7 +457,7 @@ hamCodeCols(const std::vector<char> &in, intmax n) {
 
 	for (intmax nonPowerOfTwoColumns = 0, pow = 1, j = 0; j < n; j++) {
 		if (j + 1 == pow) {
-			// j + 1 is a power of two.
+			// j + 1 is a power of two. Parity/check bit.
 			for (intmax i = pow + 1; i <= n; i++) {
 				if ((i & pow) != 0) {
 					r[sc<vst>(j)] ^= in[sc<vst>(hammingK(i) - 1)];
@@ -465,7 +465,7 @@ hamCodeCols(const std::vector<char> &in, intmax n) {
 			}
 			pow <<= 1;
 		} else {
-			// j + 1 is not a power of two.
+			// j + 1 is not a power of two. Data bit.
 			r[sc<vst>(j)] = in[sc<vst>(hammingK(j + 1) - 1)];
 			nonPowerOfTwoColumns++;
 		}
