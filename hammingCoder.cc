@@ -131,7 +131,7 @@ concept BitStorage = (std::is_integral_v<T> && std::is_unsigned_v<T> &&
 // A bit vector type.
 template<typename word, int aligSize>
 requires BitStorage<word, aligSize>
-class bitVector final {
+class BitVector final {
 	// Length in bits.
 	intmax len = 0;
 
@@ -186,7 +186,7 @@ class bitVector final {
 		void *p = arr.data();
 		if (std::align(aligSize, aligSize, p, sz) != arr.data() ||
 		    p != arr.data() || sz != S) {
-			std::cerr << "bitVector<" << sizeof(word) << ", " << aligSize <<
+			std::cerr << "BitVector<" << sizeof(word) << ", " << aligSize <<
 				     ">.trapIfMisaligned: misaligned bit storage\n";
 			std::cerr.flush();
 			__builtin_trap();
@@ -251,7 +251,7 @@ class bitVector final {
 	// Allocates enough memory for the given capacity in bits, sets len to 0.
 	template<typename ConstrType>
 	requires std::is_same_v<ConstrType, ConstrTypeAlloc> || std::is_same_v<ConstrType, ConstrTypeZero>
-	bitVector([[maybe_unused]] ConstrType unused, intmax capBits) {
+	BitVector([[maybe_unused]] ConstrType unused, intmax capBits) {
 		auto s = ceilDivAligned(capBits);
 		arr.reserve(sc<vst>(s));
 		if constexpr (std::is_same_v<ConstrType, ConstrTypeZero>) {
@@ -261,14 +261,14 @@ class bitVector final {
 		}
 	}
 
-	// Copies a contiguous range of l bits from in starting at index i to a new bitVector.
+	// Copies a contiguous range of l bits from in starting at index i to a new BitVector.
 	// The following relation must hold: out_len_bit <= in.len - in_off_bit.
-	bitVector(const bitVector<word, aligSize> &in, intmax in_off_bit, intmax out_len_bit):
-	bitVector(bitVector<word, aligSize>::ConstrTypeZero::e, out_len_bit) {
+	BitVector(const BitVector<word, aligSize> &in, intmax in_off_bit, intmax out_len_bit):
+	BitVector(BitVector<word, aligSize>::ConstrTypeZero::e, out_len_bit) {
 		intmax in_len_bit = in.len, in_off_wrd = in_off_bit / wordBits, out_off_wrd = 0,
 		     out_len_wrd = ceilDivWord(out_len_bit), in_len_wrd = ceilDivWord(in.len);
 		if (!(out_len_bit <= in_len_bit - in_off_bit)) {
-			std::cerr << "bitVector(bitVector<" << sizeof(word) << ", " << aligSize <<
+			std::cerr << "BitVector(BitVector<" << sizeof(word) << ", " << aligSize <<
 			             "> &, intmax, intmax): flawed caller\n";
 			std::cerr.flush();
 			__builtin_trap();
@@ -295,18 +295,18 @@ class bitVector final {
 				(*this)[out_off_wrd] = in[in_off_wrd];
 			}
 
-			// Clear highest bits from the last word after the end of the bitVector.
+			// Clear highest bits from the last word after the end of the BitVector.
 			out_off_wrd--;
 		}
 		auto i = (wordBits - out_len_bit) % wordBits;
 		(*this)[out_off_wrd] = sc<word>(sc<word>((*this)[out_off_wrd] << i) >> i);
 	}
 
-	// Fills the bitVector with input from r.
+	// Fills the BitVector with input from r.
 	template<typename X>
 	requires Reader<X>
-	bitVector(X r):
-	bitVector(bitVector<word, aligSize>::ConstrTypeAlloc::e, initialInputMessageCapacity) {
+	BitVector(X r):
+	BitVector(BitVector<word, aligSize>::ConstrTypeAlloc::e, initialInputMessageCapacity) {
 		for (;;) {
 			int c = r();
 			if (c == '	' || c == ' ' || c == '\n' || c == '\r') {
@@ -326,9 +326,9 @@ class bitVector final {
 
 	// A dummy coder, not actually a coder, just has the coder interface. Faster than
 	// a true coder.
-	bitVector([[maybe_unused]] ConstrTypeDummyCoder unused,
-	  const bitVector<word, aligSize> &in, intmax n):
-	bitVector(bitVector<word, aligSize>::ConstrTypeZero::e, n) {
+	BitVector([[maybe_unused]] ConstrTypeDummyCoder unused,
+	  const BitVector<word, aligSize> &in, intmax n):
+	BitVector(BitVector<word, aligSize>::ConstrTypeZero::e, n) {
 		n = hammingN(in.len);
 
 		auto nWords = ceilDivWord(len);
@@ -362,9 +362,9 @@ class bitVector final {
 		}
 	}
 
-	// Checks equality between bitVectors. Used just for testing.
+	// Checks equality between BitVectors. Used just for testing.
 	[[nodiscard]] bool
-	equal(const bitVector<word, aligSize> &v) const {
+	equal(const BitVector<word, aligSize> &v) const {
 		if (len != v.len) {
 			return false;
 		}
@@ -378,7 +378,7 @@ class bitVector final {
 
 	// XORs the current instance with op.
 	void
-	maskedExOr(const bitVector &op, uint8 bit) {
+	maskedExOr(const BitVector &op, uint8 bit) {
 		uint8 mask = sc<uint8>(~0U) * bit;
 		auto out = std::assume_aligned<aligSize>(reinterpret_cast<uint8*>(arr.data()));
 		auto in  = std::assume_aligned<aligSize>(reinterpret_cast<const uint8*>(op.arr.data()));
@@ -484,8 +484,8 @@ printFatBitVector(const std::vector<char> &bits) {
 	auto l = bits.size();
 	if constexpr (printLess) {
 		// Here we should do something comparable to what's done in
-		// bitVector.print, and we don't know how many bits there are in
-		// bitVector's word, but assuming 64 seems fine for now.
+		// BitVector.print, and we don't know how many bits there are in
+		// BitVector's word, but assuming 64 seems fine for now.
 
 		// ceiling(l / 64)
 		l = (l - 1) / 64 + 1;
@@ -506,9 +506,9 @@ printFatBitVector(const std::vector<char> &bits) {
 template<typename T, int S>
 requires BitStorage<T, S>
 class GenMatRowsDense final {
-	std::vector<bitVector<T, S>> m;
+	std::vector<BitVector<T, S>> m;
 	intmax rows;
-	using vst = typename std::vector<bitVector<T, S>>::size_type;
+	using vst = typename std::vector<BitVector<T, S>>::size_type;
 
 	public:
 
@@ -516,7 +516,7 @@ class GenMatRowsDense final {
 	GenMatRowsDense(intmax n): rows(hammingK(n)) {
 		m.reserve(sc<vst>(rows));
 		for (intmax i = 0; i < rows; i++) {
-			m.emplace_back(bitVector<T, S>(bitVector<T, S>::ConstrTypeZero::e, n));
+			m.emplace_back(BitVector<T, S>(BitVector<T, S>::ConstrTypeZero::e, n));
 		}
 		for (intmax nonPowerOfTwoColumns = 0, pow = 1, j = 0; j < n; j++) {
 			if (j + 1 == pow) {
@@ -539,9 +539,9 @@ class GenMatRowsDense final {
 
 	// Multiplies the row-vector with the matrix, iterating through the rows of
 	// the generator matrix in the outermost loop.
-	[[nodiscard]] bitVector<T, S>
-	rowMulMat(const bitVector<T, S> &row) const {
-		bitVector<T, S> out(bitVector<T, S>::ConstrTypeZero::e, m[0].getLen());
+	[[nodiscard]] BitVector<T, S>
+	rowMulMat(const BitVector<T, S> &row) const {
+		BitVector<T, S> out(BitVector<T, S>::ConstrTypeZero::e, m[0].getLen());
 
 		// Add relevant rows of the matrix to out.
 		for (intmax len = row.getLen(), i = 0; i < len; i++) {
@@ -570,14 +570,14 @@ class GenMatRowsDense final {
 
 namespace {
 
-// Replaces two bitVector constructors while testing the rest of the code.
+// Replaces two BitVector constructors while testing the rest of the code.
 template<typename T, int S, typename X>
 requires BitStorage<T, S>
-std::vector<bitVector<T, S>>
+std::vector<BitVector<T, S>>
 makeBitVectorVectorWithInput(X r, intmax chunkSize) {
-	std::vector<bitVector<T, S>> res;
+	std::vector<BitVector<T, S>> res;
 	res.reserve(1UL << 4);
-	res.emplace_back(bitVector<T, S>(bitVector<T, S>::ConstrTypeZero::e, chunkSize));
+	res.emplace_back(BitVector<T, S>(BitVector<T, S>::ConstrTypeZero::e, chunkSize));
 	intmax len = 0;
 	for (typename decltype(res)::size_type i = 0;;) {
 		int c = r();
@@ -591,8 +591,8 @@ makeBitVectorVectorWithInput(X r, intmax chunkSize) {
 		if (len == chunkSize) {
 			len = 0;
 			i++;
-			res.emplace_back(bitVector<T, S>(
-			  bitVector<T, S>::ConstrTypeZero::e, chunkSize));
+			res.emplace_back(BitVector<T, S>(
+			  BitVector<T, S>::ConstrTypeZero::e, chunkSize));
 		}
 		res[i].set(ASCIIToNum(c), len);
 		len++;
@@ -623,7 +623,7 @@ LLVMFuzzerTestOneInput(const uint8_t *data, size_t size) {
 
 	using bWord = uint8;
 	constexpr int align = 4;
-	using bV = bitVector<bWord, align>;
+	using bV = BitVector<bWord, align>;
 
 	class FuzzReader final {
 		// The pointer arithmetic here is a bit ugly, but it's OK because the data
@@ -715,7 +715,7 @@ main(int argc, char *argv[]) {
 	std::cerr.flush();
 
 	using bWord = uintmax;
-	using bV = bitVector<bWord, bitStorageAlignment>;
+	using bV = BitVector<bWord, bitStorageAlignment>;
 
 	bV inMsg([]()->int {return std::cin.get();});
 	std::cerr << "\nInput source message:\n";
