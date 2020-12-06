@@ -46,4 +46,6 @@ nofuzz-gdb-gcc)
 util-random-ascii-bits)
 	g++ -o util-random-ascii-bits $cxx_opt -flto util/random-ascii-bits.cc
 	;;
+*)
+	printf "build.sh: unrecognized argument $1 \n" 1>&2
 esac
