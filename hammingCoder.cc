@@ -521,16 +521,16 @@ hamCodeRows(const std::vector<char> &in, intmax n) {
 }
 
 class GenMatRowsSparse final {
-	// TODO: try replacing std::vector-s with arrays and lengths.
-	std::vector<std::vector<int>> m;
+	intmax rows;
+	int *cols;
+	int **m;
 
 	public:
 
 	// Construct a sparse representation for a generator matrix for a Hamming code
 	// with given n.
-	GenMatRowsSparse(intmax n) {
-		auto rows = hammingK(n);
-		m.resize(sc<uintmax>(rows));
+	GenMatRowsSparse(intmax n):
+	rows(hammingK(n)), cols(new int[sc<uintmax>(rows)]), m(new int*[sc<uintmax>(rows)]) {
 		for (intmax i = 0; i < rows; i++) {
 			// Number of columns in this row, densely represented, stripped of
 			// trailing zeros.
@@ -539,13 +539,14 @@ class GenMatRowsSparse final {
 			// Number of columns in this row, sparsely represented.
 			intmax spc = std::popcount(Col) + 1;
 
-			m[sc<uintmax>(i)].resize(sc<uintmax>(spc));
+			cols[i] = sc<int>(spc);
+			m[i] = new int[sc<uintmax>(spc)];
 
 			intmax c = 0, j = 0;
 			for (uintmax col = Col; col != 0;) {
 				auto d = std::countr_zero(col);
 				j += d;
-				m[sc<uintmax>(i)][sc<uintmax>(c)] = sc<int>((1UL << j) - 1);
+				m[i][c] = sc<int>((1UL << j) - 1);
 				c++;
 
 				j++;
@@ -553,8 +554,16 @@ class GenMatRowsSparse final {
 			}
 
 			// Bit (i, spc - 1) is always set.
-			m[sc<uintmax>(i)][sc<uintmax>(spc - 1)] = sc<int>(Col - 1);
+			m[i][spc - 1] = sc<int>(Col - 1);
 		}
+	}
+
+	~GenMatRowsSparse() {
+		for (intmax i = 0; i < rows; i++) {
+			delete[] m[i];
+		}
+		delete[] m;
+		delete[] cols;
 	}
 
 	// Multiplies the row-vector with the matrix, iterating through the rows of
@@ -564,16 +573,15 @@ class GenMatRowsSparse final {
 		// There is always a set bit in the final position (last row, last column)
 		// of the generator matrix, so the vector sizes correspond to
 		// matrix dimensions.
-		intmax nRows = sc<intmax>(m.size());
-		intmax nCols = sc<intmax>(m[sc<uintmax>(nRows - 1)].back() + 1);
+		intmax nCols = sc<intmax>(m[rows - 1][cols[rows - 1] - 1] + 1);
 		std::vector<char> out(sc<uintmax>(nCols), 0);
-		nRows = sc<intmax>(row.size());
+		intmax nRows = sc<intmax>(row.size());
 
 		// Add relevant rows of the matrix to out.
 		for (intmax i = 0; i < nRows; i++) {
 			// Add to out the row m[i] multiplied by the bit row[i].
-			for (auto j: m[sc<uintmax>(i)]) {
-				out[sc<uintmax>(j)] ^= row[sc<uintmax>(i)];
+			for (intmax c = 0; c < cols[i]; c++) {
+				out[sc<uintmax>(m[i][c])] ^= row[sc<uintmax>(i)];
 			}
 		}
 		return out;
