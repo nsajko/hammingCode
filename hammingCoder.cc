@@ -124,6 +124,9 @@ concept Reader = requires(X r) {
 	{r()} -> std::same_as<int>;
 };
 
+template<typename T>
+concept IsIndex = (std::is_integral_v<T> && std::is_signed_v<T>);
+
 // A bit storage type is defined by the unsigned integer word type T, and the alignment n
 // of the bit storage, in bytes.
 template<typename T, int n>
@@ -520,17 +523,19 @@ hamCodeRows(const std::vector<char> &in, intmax n) {
 	return r;
 }
 
+template<typename T>
+requires IsIndex<T>
 class GenMatRowsSparse final {
 	intmax rows;
-	int *cols;
-	int **m;
+	T *cols;
+	T **m;
 
 	public:
 
 	// Construct a sparse representation for a generator matrix for a Hamming code
 	// with given n.
 	GenMatRowsSparse(intmax n):
-	rows(hammingK(n)), cols(new int[sc<uintmax>(rows)]), m(new int*[sc<uintmax>(rows)]) {
+	rows(hammingK(n)), cols(new T[sc<uintmax>(rows)]), m(new T*[sc<uintmax>(rows)]) {
 		for (intmax i = 0; i < rows; i++) {
 			// Number of columns in this row, densely represented, stripped of
 			// trailing zeros.
@@ -539,14 +544,14 @@ class GenMatRowsSparse final {
 			// Number of columns in this row, sparsely represented.
 			intmax spc = std::popcount(Col) + 1;
 
-			cols[i] = sc<int>(spc);
-			m[i] = new int[sc<uintmax>(spc)];
+			cols[i] = sc<T>(spc);
+			m[i] = new T[sc<uintmax>(spc)];
 
 			intmax c = 0, j = 0;
 			for (uintmax col = Col; col != 0;) {
 				auto d = std::countr_zero(col);
 				j += d;
-				m[i][c] = sc<int>((1UL << j) - 1);
+				m[i][c] = sc<T>((1UL << j) - 1);
 				c++;
 
 				j++;
@@ -554,7 +559,7 @@ class GenMatRowsSparse final {
 			}
 
 			// Bit (i, spc - 1) is always set.
-			m[i][spc - 1] = sc<int>(Col - 1);
+			m[i][spc - 1] = sc<T>(Col - 1);
 		}
 	}
 
@@ -760,7 +765,7 @@ LLVMFuzzerTestOneInput(const uint8_t *data, size_t size) {
 	bV inMsg(fakeGet);
 	auto inMsgTest = makeBitVectorVectorWithInput<bWord, align>(fakeGet, k);
 	GenMatRowsDense<bWord, align> genMat(n);
-	GenMatRowsSparse genMatSprs(n);
+	GenMatRowsSparse<int> genMatSprs(n);
 	decltype(inMsgTest)::size_type I = 0;
 	for (intmax blLen = k, iMsgLen = inMsg.getLen(), i = 0; i < iMsgLen; i += k, I++) {
 		if (iMsgLen - i < blLen) {
@@ -842,7 +847,7 @@ main(int argc, char *argv[]) {
 
 	// Make and show the code's generator matrix.
 	GenMatRowsDense<bWord, bitStorageAlignment> genMat(n);
-	GenMatRowsSparse genMatSprs(n);
+	GenMatRowsSparse<int> genMatSprs(n);
 	if constexpr (hamCoderAlgo == HammingCoderAlgor::RowsDense) {
 		std::cerr << "\nThe generator matrix for the code:\n\n";
 		std::cerr.flush();
