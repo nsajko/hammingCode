@@ -39,6 +39,7 @@ enum class HammingCoderAlgor {
 	RowsSparse,
 	RowsDense,
 	Cols,
+	ColsSparse,
 	VeryNaive,
 
 	// Incorrect but fast, to get an upper limit on possible throughput.
@@ -446,11 +447,39 @@ hamCodeNaive(const std::vector<char> &in, intmax n) {
 	return r;
 }
 
+// OEIS sequence A000295, Eulerian numbers.
+//
+// The position of the first set bit in column n of a Hamming code generator matrix.
+//
+// In:  0, 1, 2, 3, 4, ...
+// Out: 0, 0, 1, 4, 11, ...
+[[nodiscard]] intmax
+A000295(intmax n) {
+	return (1 << n) - n - 1;
+}
+
+// OEIS sequence A209229, Characteristic function of powers of 2.
+[[nodiscard]] intmax
+A036987(intmax n) {
+	return sc<intmax>(std::has_single_bit(sc<uintmax>(n)));
+}
+
+// Returns the number of set bit ranges in col-th power-of-two column of a Hamming code
+// generator matrix with given rank k. Call with col = 0, 1, 2, 3, ...
+[[nodiscard]] intmax
+hamGenMatColRangesNum(intmax col, intmax k) {
+	intmax r{1};
+	for (intmax c{1 << (col + 1)}, j{A000295(col) - 1 - 1 + c}; j < k; j += c - A036987(r)) {
+		r++;
+	}
+	return r;
+}
+
 // A Hamming code coder that iterates through the columns of an imagined
 // generator matrix in the outermost loop.
 [[nodiscard]] std::vector<char>
 hamCodeCols(const std::vector<char> &in, intmax n) {
-	// Notice how similar this is to the GenMatRowsDense constructor.
+	// This is very similar to the GenMatColsSparse constructor.
 
 	using vst = std::vector<char>::size_type;
 
@@ -483,11 +512,92 @@ hamCodeCols(const std::vector<char> &in, intmax n) {
 	return r;
 }
 
+template<typename T>
+requires IsIndex<T>
+class GenMatColsSparse final {
+	// We store just the power-of-two columns of the generator matrix. Each one is
+	// represented as a set of ranges of set bits.
+
+	intmax nCols;
+
+	intmax nPow2Cols;
+	T *nRanges;
+	T **ranges;
+
+	public:
+
+	// Construct a sparse representation for a generator matrix for a Hamming code
+	// with given n.
+	GenMatColsSparse(intmax n):
+	nCols{n}, nPow2Cols{sc<intmax>(std::bit_width(sc<uintmax>(n)))}, nRanges{new T[sc<uintmax>(nPow2Cols)]},
+	ranges{new T*[sc<uintmax>(nPow2Cols)]} {
+		for (intmax k{hammingK(n)}, i{0}; i < nPow2Cols; i++) {
+			nRanges[i] = sc<T>(hamGenMatColRangesNum(i, k));
+			ranges[i] = new T[sc<uintmax>(nRanges[i])];
+
+			// Store the index of the first bit of each range of set bits in the column.
+			intmax c{1 << (i + 1)}, j{A000295(i)}, r{0};
+			ranges[i][r] = sc<T>(j);
+			for (j += c - 2, r++; r < nRanges[i]; j += c - A036987(r)) {
+				ranges[i][r] = sc<T>(j);
+				r++;
+			}
+		}
+	}
+
+	~GenMatColsSparse() {
+		for (intmax i{0}; i < nPow2Cols; i++) {
+			delete[] ranges[i];
+		}
+		delete[] ranges;
+		delete[] nRanges;
+	}
+
+	// Multiplies the row-vector with the matrix, iterating through the columns of
+	// the generator matrix in the outermost loop.
+	[[nodiscard]] std::vector<char>
+	rowMulMat(const std::vector<char> &row) const {
+		using vst = std::vector<char>::size_type;
+
+		std::vector<char> out(sc<vst>(nCols), 0);
+
+		intmax K{std::min(sc<intmax>(row.size()), hammingK(nCols))};
+
+		// Iterate through the power-of-two columns of the generator matrix,
+		// creating the parity bits.
+		for (intmax i{0}; i < nPow2Cols; i++) {
+			// Ranges of set bits within column.
+
+			// Length of range of set bits.
+			intmax c{1 << i};
+
+			// First range of set bits, has one less set bit than other ranges.
+			intmax j{0};
+			for (intmax k{ranges[i][j]}, e{std::min(k - 1 + c, K)}; k < e; k++) {
+				out[sc<vst>(c - 1)] ^= row[sc<vst>(k)];
+			}
+
+			for (j++; j < nRanges[i]; j++) {
+				for (intmax k{ranges[i][j]}, e{std::min(k + c, K)}; k < e; k++) {
+					out[sc<vst>(c - 1)] ^= row[sc<vst>(k)];
+				}
+			}
+		}
+
+		// Copy the data bits.
+		for (intmax i{0}; i < K; i++) {
+			out[sc<vst>(hammingN(i + 1) - 1)] = row[sc<vst>(i)];
+		}
+
+		return out;
+	}
+};
+
 // A Hamming code coder that iterates through the rows of an imagined
 // generator matrix in the outermost loop.
 [[nodiscard]] std::vector<char>
 hamCodeRows(const std::vector<char> &in, intmax n) {
-	// This is very similar to the GenMatRowsSparse constructor.
+	// This is very similar to the GenMatRowsSparse and GenMatRowsDense constructors.
 
 	using vst = std::vector<char>::size_type;
 
@@ -633,22 +743,20 @@ class GenMatRowsDense final {
 		for (intmax i = 0; i < rows; i++) {
 			m.emplace_back(BitVector<T, S>(BitVector<T, S>::ConstrTypeZero::e, n));
 		}
-		for (intmax nonPowerOfTwoColumns = 0, pow = 1, j = 0; j < n; j++) {
-			if (j + 1 == pow) {
-				// j + 1 is a power of two.
-				for (auto i = pow + 1; i <= n; i++) {
-					// Check columns that have the pow bit set.
-					if ((i & pow) != 0) {
-						m[sc<vst>(hammingK(i) - 1)].set(1, j);
-					}
-				}
-				pow <<= 1;
-			} else {
-				// j + 1 is not a power of two. Set the bit
-				// m[row=nonPowerOfTwoColumns, column=j].
-				m[sc<vst>(nonPowerOfTwoColumns)].set(1, j);
-				nonPowerOfTwoColumns++;
+		for (intmax i = 0; i < rows; i++) {
+			uintmax Col = sc<uintmax>(hammingN(i + 1));
+
+			intmax j = 0;
+			for (uintmax col = Col; col != 0;) {
+				auto d = std::countr_zero(col);
+				j += d;
+				m[sc<vst>(i)].set(1, sc<intmax>((1UL << j) - 1));
+
+				j++;
+				col >>= d + 1;
 			}
+
+			m[sc<vst>(i)].set(1, sc<intmax>(Col - 1));
 		}
 	}
 
@@ -766,6 +874,7 @@ LLVMFuzzerTestOneInput(const uint8_t *data, size_t size) {
 	auto inMsgTest = makeBitVectorVectorWithInput<bWord, align>(fakeGet, k);
 	GenMatRowsDense<bWord, align> genMat(n);
 	GenMatRowsSparse<int> genMatSprs(n);
+	GenMatColsSparse<int> genMatSprsCols(n);
 	decltype(inMsgTest)::size_type I = 0;
 	for (intmax blLen = k, iMsgLen = inMsg.getLen(), i = 0; i < iMsgLen; i += k, I++) {
 		if (iMsgLen - i < blLen) {
@@ -786,6 +895,9 @@ LLVMFuzzerTestOneInput(const uint8_t *data, size_t size) {
 			__builtin_trap();
 		}
 		if (!(naiveResult == genMatSprs.rowMulMat(iChunkFat))) {
+			__builtin_trap();
+		}
+		if (!(naiveResult == genMatSprsCols.rowMulMat(iChunkFat))) {
 			__builtin_trap();
 		}
 	}
@@ -848,6 +960,7 @@ main(int argc, char *argv[]) {
 	// Make and show the code's generator matrix.
 	GenMatRowsDense<bWord, bitStorageAlignment> genMat(n);
 	GenMatRowsSparse<int> genMatSprs(n);
+	GenMatColsSparse<int> genMatSprsCols(n);
 	if constexpr (hamCoderAlgo == HammingCoderAlgor::RowsDense) {
 		std::cerr << "\nThe generator matrix for the code:\n\n";
 		std::cerr.flush();
@@ -868,6 +981,7 @@ main(int argc, char *argv[]) {
 		}
 
 		constexpr bool usingFatBitVectors = hamCoderAlgo == HammingCoderAlgor::Cols ||
+		                                    hamCoderAlgo == HammingCoderAlgor::ColsSparse ||
 		                                    hamCoderAlgo == HammingCoderAlgor::VeryNaive ||
 						    hamCoderAlgo == HammingCoderAlgor::Rows ||
 						    hamCoderAlgo == HammingCoderAlgor::RowsSparse;
@@ -898,6 +1012,8 @@ main(int argc, char *argv[]) {
 			printFatBitVector(hamCodeNaive(iChunkFat, n));
 		} else if constexpr (hamCoderAlgo == HammingCoderAlgor::Cols) {
 			printFatBitVector(hamCodeCols(iChunkFat, n));
+		} else if constexpr (hamCoderAlgo == HammingCoderAlgor::ColsSparse) {
+			printFatBitVector(genMatSprsCols.rowMulMat(iChunkFat));
 		} else if constexpr (hamCoderAlgo == HammingCoderAlgor::RowsDense) {
 			genMat.rowMulMat(iChunk).print();
 		} else if constexpr (hamCoderAlgo == HammingCoderAlgor::Dummy) {
@@ -917,6 +1033,8 @@ main(int argc, char *argv[]) {
 		auto hca = "VeryNaive ";
 		if constexpr (hamCoderAlgo == HammingCoderAlgor::Cols) {
 			hca = "Cols      ";
+		} else if constexpr (hamCoderAlgo == HammingCoderAlgor::ColsSparse) {
+			hca = "ColsSparse";
 		} else if constexpr (hamCoderAlgo == HammingCoderAlgor::RowsDense) {
 			hca = "RowsDense ";
 		} else if constexpr (hamCoderAlgo == HammingCoderAlgor::Dummy) {
