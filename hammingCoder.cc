@@ -485,28 +485,28 @@ hamCodeCols(const std::vector<char> &in, intmax n) {
 
 	std::vector<char> r(sc<vst>(n), 0);
 
+	auto inLen{sc<intmax>(in.size())};
+
 	// The fact that in.len can be smaller than hammingK(n) (which can happen with the
 	// last chunk of input) complicates the implementation somewhat.
 	// in.len can be smaller than hammingK(n), in which case we need to decrease n
 	// accordingly.
 	//
 	// In our program this only happens with the last chunk of input to be coded.
-	n = hammingN(sc<intmax>(in.size()));
+	n = hammingN(inLen);
 
-	for (intmax nonPowerOfTwoColumns = 0, pow = 1, j = 0; j < n; j++) {
-		if (j + 1 == pow) {
-			// j + 1 is a power of two. Parity/check bit.
-			for (intmax i = pow + 1; i <= n; i++) {
-				if ((i & pow) != 0) {
-					r[sc<vst>(j)] ^= in[sc<vst>(hammingK(i) - 1)];
-				}
+	// Create parity/check bits.
+	for (intmax pow{1}; pow < n; pow <<= 1) {
+		for (intmax i{pow + 1}; i <= n; i++) {
+			if ((i & pow) != 0) {
+				r[sc<vst>(pow - 1)] ^= in[sc<vst>(hammingK(i) - 1)];
 			}
-			pow <<= 1;
-		} else {
-			// j + 1 is not a power of two. Data bit.
-			r[sc<vst>(j)] = in[sc<vst>(hammingK(j + 1) - 1)];
-			nonPowerOfTwoColumns++;
 		}
+	}
+
+	// Copy the data bits.
+	for (intmax i{0}; i < inLen; i++) {
+		r[sc<vst>(hammingN(i + 1) - 1)] = in[sc<vst>(i)];
 	}
 
 	return r;
