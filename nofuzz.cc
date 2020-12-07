@@ -25,7 +25,7 @@ int
 main(int argc, char *argv[]) {
 	std::ios::sync_with_stdio(false);
 
-	for (int i = 1; i < argc; i++) {
+	for (int i{1}; i < argc; i++) {
 		std::filesystem::path f(argv[i]);
 
 		if (!std::filesystem::exists(f)) {
@@ -36,7 +36,7 @@ main(int argc, char *argv[]) {
 			std::cerr << "nofuzz: " << f << " is not a regular file\n\n";
 			continue;
 		}
-		auto sz = std::filesystem::file_size(f);
+		auto sz{std::filesystem::file_size(f)};
 		if (sc<intmax>(sz) < 0) {
 			std::cerr << "nofuzz: unexpected error with " << f << "\n\n";
 			continue;
@@ -45,7 +45,7 @@ main(int argc, char *argv[]) {
 
 		std::vector<unsigned char> buffer;
 		buffer.resize(sc<decltype(buffer)::size_type>(sz));
-		auto a = buffer.data();
+		auto a{buffer.data()};
 		std::ifstream(f, std::ios_base::binary).read(reinterpret_cast<char*>(a), sc<intmax>(sz));
 		LLVMFuzzerTestOneInput(a, sz);
 		std::cerr << '\n';

@@ -10,10 +10,10 @@ using uint64 = std::uint64_t;
 using uintmax = std::uintmax_t;
 using intmax = std::intmax_t;
 
-constexpr intmax byteBits = 8;
+constexpr intmax byteBits{8};
 
 // Size of the smallest amount of output we produce, in bytes.
-constexpr intmax chunkSize = 1UL << 21;
+constexpr intmax chunkSize{1UL << 21};
 
 // Shorthand for static_cast.
 template<typename X, typename Y>
@@ -26,7 +26,7 @@ template<int variant>
 requires (variant == StarStar || variant == PlusPlus)
 class Xoshiro256 final {
 	// The PRNG state, initialized with random bits.
-	uint64 s[4] = {0xdcbfcdafbe972023UL, 0x6f496a9923b1364aUL, 0xb3dcd40b7cd14da1UL, 0xc658ab0e170a5d57UL};
+	uint64 s[4]{0xdcbfcdafbe972023UL, 0x6f496a9923b1364aUL, 0xb3dcd40b7cd14da1UL, 0xc658ab0e170a5d57UL};
 
 	public:
 
@@ -39,7 +39,7 @@ class Xoshiro256 final {
 			result = std::rotl(s[0] + s[3], 23) + s[0];
 		}
 	
-		uint64 t = s[1] << 17;
+		uint64 t{s[1] << 17};
 	
 		s[2] ^= s[0];
 		s[3] ^= s[1];
@@ -65,16 +65,16 @@ int
 main() {
 	std::ios::sync_with_stdio(false);
 
-	constexpr intmax m = 24;
+	constexpr intmax m{24};
 
 	Xoshiro256<PlusPlus> r;
 
-	for (intmax i = 0; i < m; i++) {
+	for (intmax i{0}; i < m; i++) {
 		alignas(256) static char bitStorage[chunkSize / sizeof(char) * byteBits];
 
-		for (intmax j = 0; j < sc<intmax>(chunkSize / sizeof(uint64)); j++) {
-			auto v = r.next();
-			for (int i = 0; i < sc<int>(sizeof(uint64) * byteBits); i++) {
+		for (intmax j{0}; j < sc<intmax>(chunkSize / sizeof(uint64)); j++) {
+			auto v{r.next()};
+			for (int i{0}; i < sc<int>(sizeof(uint64) * byteBits); i++) {
 				bitStorage[j * sizeof(uint64) * byteBits + i] = sc<char>(numToASCII((v >> i) & 1UL));
 			}
 		}

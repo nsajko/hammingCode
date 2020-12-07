@@ -31,7 +31,7 @@ using uint = unsigned int;
 using uintmax = std::uintmax_t;
 using intmax = std::intmax_t;
 
-constexpr intmax byteBits = 8;
+constexpr intmax byteBits{8};
 
 // Hamming code algorithms.
 enum class HammingCoderAlgor {
@@ -49,29 +49,29 @@ enum class HammingCoderAlgor {
 // Macros are used for conditional compilation, but the goal is to replace them with
 // constexpr variables as soon as possible, undeffing the macros simultaneously.
 
-[[maybe_unused]] constexpr HammingCoderAlgor hamCoderAlgo = HAM_COD_ALG;
+[[maybe_unused]] constexpr HammingCoderAlgor hamCoderAlgo{HAM_COD_ALG};
 #undef HAM_COD_ALG
 
 #ifdef USE_STOPWATCH
 #   undef USE_STOPWATCH
-[[maybe_unused]] constexpr bool useStopwatch = true;
+[[maybe_unused]] constexpr bool useStopwatch{true};
 #else
-[[maybe_unused]] constexpr bool useStopwatch = false;
+[[maybe_unused]] constexpr bool useStopwatch{false};
 #endif
 
 // For profiling or benchmarking the coder.
 #ifdef PRINT_LESS
 #   undef PRINT_LESS
-[[maybe_unused]] constexpr bool printLess = true;
+[[maybe_unused]] constexpr bool printLess{true};
 #else
-[[maybe_unused]] constexpr bool printLess = false;
+[[maybe_unused]] constexpr bool printLess{false};
 #endif
 
 // In bytes.
-constexpr int bitStorageAlignment = 1UL << 4;
+constexpr int bitStorageAlignment{1UL << 4};
 
 // Configurable initial capacity for the input message in bits.
-constexpr intmax initialInputMessageCapacity = bitStorageAlignment * byteBits;
+constexpr intmax initialInputMessageCapacity{bitStorageAlignment * byteBits};
 
 // Shorthand for static_cast.
 template<typename X, typename Y>
@@ -81,14 +81,14 @@ sc(Y v) { return static_cast<X>(v); }
 // Returns the k Hamming code parameter corresponding to a given n.
 [[nodiscard]] intmax
 hammingK(intmax n) {
-	auto N = sc<uintmax>(n);
+	auto N{sc<uintmax>(n)};
 	return sc<intmax>(N - std::bit_width(N));
 }
 
 // Returns the n Hamming code parameter corresponding to a given k.
 [[nodiscard]] intmax
 hammingN(intmax k) {
-	auto K = sc<uintmax>(k);
+	auto K{sc<uintmax>(k)};
 	return sc<intmax>(K + std::bit_width(K + std::bit_width(K)));
 }
 
@@ -108,9 +108,9 @@ ASCIIToNum(intmax c) {
 // the first char outside the ASCII numeral range.
 [[nodiscard]] intmax
 lexDecimalASCII(const char *s) {
-	intmax r = 0;
-	for (int i = 0;; i++) {
-		intmax c = s[i];
+	intmax r{0};
+	for (int i{0};; i++) {
+		intmax c{s[i]};
 		if (c < '0' || '9' < c) {
 			break;
 		}
@@ -139,7 +139,7 @@ template<typename word, int aligSize>
 requires BitStorage<word, aligSize>
 class BitVector final {
 	// Length in bits.
-	intmax len = 0;
+	intmax len{0};
 
 	struct AlignedBits final {
 		alignas(aligSize) word a[aligSize / sizeof(word)];
@@ -162,9 +162,9 @@ class BitVector final {
 
 	using vst = typename std::vector<AlignedBits>::size_type;
 
-	static constexpr intmax wordBits = byteBits * sizeof(word);
-	static constexpr intmax alignedBits = byteBits * sizeof(AlignedBits);
-	static constexpr intmax alignedWords = aligSize / sizeof(word);
+	static constexpr intmax wordBits{byteBits * sizeof(word)};
+	static constexpr intmax alignedBits{byteBits * sizeof(AlignedBits)};
+	static constexpr intmax alignedWords{aligSize / sizeof(word)};
 
 	// Returns ceiling(n / alignedBits).
 	[[nodiscard]] static intmax
@@ -187,9 +187,9 @@ class BitVector final {
 	// Traps if the bit vector's backing storage is misaligned.
 	void
 	trapIfMisaligned() {
-		constexpr int S = 1UL << 15;
-		std::size_t sz = S;
-		void *p = arr.data();
+		constexpr int S{1UL << 15};
+		std::size_t sz{S};
+		void *p{arr.data()};
 		if (std::align(aligSize, aligSize, p, sz) != arr.data() ||
 		    p != arr.data() || sz != S) {
 			std::cerr << "BitVector<" << sizeof(word) << ", " << aligSize <<
@@ -258,7 +258,7 @@ class BitVector final {
 	template<typename ConstrType>
 	requires std::is_same_v<ConstrType, ConstrTypeAlloc> || std::is_same_v<ConstrType, ConstrTypeZero>
 	BitVector([[maybe_unused]] ConstrType unused, intmax capBits) {
-		auto s = ceilDivAligned(capBits);
+		auto s{ceilDivAligned(capBits)};
 		arr.reserve(sc<vst>(s));
 		if constexpr (std::is_same_v<ConstrType, ConstrTypeZero>) {
 			len = capBits;
@@ -271,8 +271,8 @@ class BitVector final {
 	// The following relation must hold: out_len_bit <= in.len - in_off_bit.
 	BitVector(const BitVector<word, aligSize> &in, intmax in_off_bit, intmax out_len_bit):
 	BitVector(BitVector<word, aligSize>::ConstrTypeZero::e, out_len_bit) {
-		intmax in_len_bit = in.len, in_off_wrd = in_off_bit / wordBits, out_off_wrd = 0,
-		     out_len_wrd = ceilDivWord(out_len_bit), in_len_wrd = ceilDivWord(in.len);
+		intmax in_len_bit{in.len}, in_off_wrd{in_off_bit / wordBits}, out_off_wrd{0},
+		     out_len_wrd{ceilDivWord(out_len_bit)}, in_len_wrd{ceilDivWord(in.len)};
 		if (!(out_len_bit <= in_len_bit - in_off_bit)) {
 			std::cerr << "BitVector(BitVector<" << sizeof(word) << ", " << aligSize <<
 			             "> &, intmax, intmax): flawed caller\n";
@@ -284,8 +284,8 @@ class BitVector final {
 		out_len_bit %= wordBits;
 		if (in_off_bit != 0) {
 			for (; out_off_wrd < out_len_wrd - 1; out_off_wrd++, in_off_wrd++) {
-				auto w0 = in[in_off_wrd], w1 = in[in_off_wrd + 1];
-				auto i = wordBits - in_off_bit;
+				auto w0{in[in_off_wrd]}, w1{in[in_off_wrd + 1]};
+				auto i{wordBits - in_off_bit};
 				(*this)[out_off_wrd] = sc<word>((w0 >> in_off_bit) | sc<word>(w1 << i));
 			}
 
@@ -293,7 +293,7 @@ class BitVector final {
 
 			in_off_wrd++;
 			if (in_off_wrd < in_len_wrd) {
-				auto i = wordBits - in_off_bit;
+				auto i{wordBits - in_off_bit};
 				(*this)[out_off_wrd] |= sc<word>(in[in_off_wrd] << i);
 			}
 		} else {
@@ -304,7 +304,7 @@ class BitVector final {
 			// Clear highest bits from the last word after the end of the BitVector.
 			out_off_wrd--;
 		}
-		auto i = (wordBits - out_len_bit) % wordBits;
+		auto i{(wordBits - out_len_bit) % wordBits};
 		(*this)[out_off_wrd] = sc<word>(sc<word>((*this)[out_off_wrd] << i) >> i);
 	}
 
@@ -314,7 +314,7 @@ class BitVector final {
 	BitVector(X r):
 	BitVector(BitVector<word, aligSize>::ConstrTypeAlloc::e, initialInputMessageCapacity) {
 		for (;;) {
-			int c = r();
+			int c{r()};
 			if (c == '	' || c == ' ' || c == '\n' || c == '\r') {
 				continue;
 			}
@@ -322,7 +322,7 @@ class BitVector final {
 				break;
 			}
 
-			if (auto arrSize = arr.size(); sc<vst>(len) == arrSize * alignedBits) {
+			if (auto arrSize{arr.size()}; sc<vst>(len) == arrSize * alignedBits) {
 				arr.resize(arrSize + 1);
 			}
 			set(ASCIIToNum(c), len);
@@ -337,9 +337,9 @@ class BitVector final {
 	BitVector(BitVector<word, aligSize>::ConstrTypeZero::e, n) {
 		n = hammingN(in.len);
 
-		auto nWords = ceilDivWord(len);
-		for (intmax i = 0; i < nWords; i++) {
-			auto dat = in[i / 2] ^ sc<word>(0xdcbfcdafbe972023UL);
+		auto nWords{ceilDivWord(len)};
+		for (intmax i{0}; i < nWords; i++) {
+			auto dat{in[i / 2] ^ sc<word>(0xdcbfcdafbe972023UL)};
 			(*this)[i] = dat;
 			i++;
 			if (i == nWords) {
@@ -353,10 +353,10 @@ class BitVector final {
 	[[nodiscard]] std::vector<char>
 	fatten() const {
 		std::vector<char> r(sc<vst>(len));
-		for (intmax i = 0;; i++) {
-			auto w = (*this)[i];
-			for (int j = 0;; j++) {
-				auto I = i * wordBits + j;
+		for (intmax i{0};; i++) {
+			auto w{(*this)[i]};
+			for (int j{0};; j++) {
+				auto I{i * wordBits + j};
 				if (I == len) {
 					return r;
 				}
@@ -374,7 +374,7 @@ class BitVector final {
 		if (len != v.len) {
 			return false;
 		}
-		for (intmax l = ceilDivWord(len), i = 0; i < l; i++) {
+		for (intmax l{ceilDivWord(len)}, i{0}; i < l; i++) {
 			if ((*this)[i] != v[i]) {
 				return false;
 			}
@@ -385,10 +385,10 @@ class BitVector final {
 	// XORs the current instance with op.
 	void
 	maskedExOr(const BitVector &op, uint8 bit) {
-		uint8 mask = sc<uint8>(~0U) * bit;
-		auto out = std::assume_aligned<aligSize>(reinterpret_cast<uint8*>(arr.data()));
-		auto in  = std::assume_aligned<aligSize>(reinterpret_cast<const uint8*>(op.arr.data()));
-		for (intmax l = ceilDivByte(len), i = 0; i < l; i++) {
+		auto mask{sc<uint8>(sc<uint8>(~0U) * bit)};
+		auto out{std::assume_aligned<aligSize>(reinterpret_cast<uint8*>(arr.data()))};
+		auto in{std::assume_aligned<aligSize>(reinterpret_cast<const uint8*>(op.arr.data()))};
+		for (intmax l{ceilDivByte(len)}, i{0}; i < l; i++) {
 			out[i] ^= in[i] & mask;
 		}
 	}
@@ -397,7 +397,7 @@ class BitVector final {
 	void
 	print() const {
 		if constexpr (printLess) {
-			for (intmax i = 0; i < len; i += wordBits + 1) {
+			for (intmax i{0}; i < len; i += wordBits + 1) {
 				std::cout.put(
 				  numToASCII(((*this)[i / wordBits] >> (i % wordBits)) & 1UL));
 			}
@@ -406,7 +406,7 @@ class BitVector final {
 		}
 		using chars = std::vector<char>;
 		chars buf(sc<chars::size_type>(len));
-		for (intmax i = 0; i < len; i++) {
+		for (intmax i{0}; i < len; i++) {
 			buf[sc<chars::size_type>(i)] = numToASCII(((*this)[i / wordBits] >> (i % wordBits)) & 1UL);
 		}
 		std::cout.write(buf.data(), len).put('\n');
@@ -421,7 +421,7 @@ hamCodeNaive(const std::vector<char> &in, intmax n) {
 	n = hammingN(sc<intmax>(in.size()));
 
 	// Copy the data bits from the input.
-	for (intmax I = 0, pow = 4, i = 3; i <= n; i++) {
+	for (intmax I{0}, pow{4}, i{3}; i <= n; i++) {
 		if (i == pow) {
 			pow <<= 1;
 			continue;
@@ -432,12 +432,12 @@ hamCodeNaive(const std::vector<char> &in, intmax n) {
 	}
 
 	// Create parity bits.
-	for (intmax pow = 1; pow <= n; pow <<= 1) {
+	for (intmax pow{1}; pow <= n; pow <<= 1) {
 		// TODO: in the loop below it is possible to halve the number of
 		// iterations, but I haven't been able to do that without inducing
 		// huge slowdowns, instead of speedups. Probably has something to do with
 		// autovectorization.
-		for (intmax j = pow + 1; j <= n; j++) {
+		for (intmax j{pow + 1}; j <= n; j++) {
 			if ((j & pow) != 0) {
 				r[sc<vst>(pow - 1)] ^= r[sc<vst>(j - 1)];
 			}
@@ -603,23 +603,23 @@ hamCodeRows(const std::vector<char> &in, intmax n) {
 
 	std::vector<char> r(sc<vst>(n), 0);
 
-	intmax nRows = sc<intmax>(in.size());
+	intmax nRows{sc<intmax>(in.size())};
 
 	n = hammingN(nRows);
 
 	// Add relevant rows of the imagined generator matrix to r.
-	for (intmax i = 0; i < nRows; i++) {
+	for (intmax i{0}; i < nRows; i++) {
 		// Add to r the row i of the imagined generator matrix multiplied by
 		// the bit in[i].
 
-		uintmax Col = sc<uintmax>(hammingN(i + 1));
+		auto Col{sc<uintmax>(hammingN(i + 1))};
 
 		// Iterate through the set bits of hammingN(i + 1), effectively going
 		// through the positions of the set bits in row[i] of the imagined
 		// generator matrix.
-		intmax j = 0;
-		for (uintmax col = Col; col != 0;) {
-			auto d = std::countr_zero(col);
+		intmax j{0};
+		for (uintmax col{Col}; col != 0;) {
+			auto d{std::countr_zero(col)};
 			j += d;
 			r[sc<vst>((1UL << j) - 1)] ^= in[sc<vst>(i)];
 
@@ -646,20 +646,20 @@ class GenMatRowsSparse final {
 	// with given n.
 	GenMatRowsSparse(intmax n):
 	rows(hammingK(n)), cols(new T[sc<uintmax>(rows)]), m(new T*[sc<uintmax>(rows)]) {
-		for (intmax i = 0; i < rows; i++) {
+		for (intmax i{0}; i < rows; i++) {
 			// Number of columns in this row, densely represented, stripped of
 			// trailing zeros.
-			uintmax Col = sc<uintmax>(hammingN(i + 1));
+			auto Col{sc<uintmax>(hammingN(i + 1))};
 
 			// Number of columns in this row, sparsely represented.
-			intmax spc = std::popcount(Col) + 1;
+			intmax spc{std::popcount(Col) + 1};
 
 			cols[i] = sc<T>(spc);
 			m[i] = new T[sc<uintmax>(spc)];
 
-			intmax c = 0, j = 0;
-			for (uintmax col = Col; col != 0;) {
-				auto d = std::countr_zero(col);
+			intmax c{0}, j{0};
+			for (auto col{Col}; col != 0;) {
+				auto d{std::countr_zero(col)};
 				j += d;
 				m[i][c] = sc<T>((1UL << j) - 1);
 				c++;
@@ -674,7 +674,7 @@ class GenMatRowsSparse final {
 	}
 
 	~GenMatRowsSparse() {
-		for (intmax i = 0; i < rows; i++) {
+		for (intmax i{0}; i < rows; i++) {
 			delete[] m[i];
 		}
 		delete[] m;
@@ -688,14 +688,14 @@ class GenMatRowsSparse final {
 		// There is always a set bit in the final position (last row, last column)
 		// of the generator matrix, so the vector sizes correspond to
 		// matrix dimensions.
-		intmax nCols = sc<intmax>(m[rows - 1][cols[rows - 1] - 1] + 1);
+		intmax nCols{sc<intmax>(m[rows - 1][cols[rows - 1] - 1] + 1)};
 		std::vector<char> out(sc<uintmax>(nCols), 0);
-		intmax nRows = sc<intmax>(row.size());
+		intmax nRows{sc<intmax>(row.size())};
 
 		// Add relevant rows of the matrix to out.
-		for (intmax i = 0; i < nRows; i++) {
+		for (intmax i{0}; i < nRows; i++) {
 			// Add to out the row m[i] multiplied by the bit row[i].
-			for (intmax c = 0; c < cols[i]; c++) {
+			for (intmax c{0}; c < cols[i]; c++) {
 				out[sc<uintmax>(m[i][c])] ^= row[sc<uintmax>(i)];
 			}
 		}
@@ -706,7 +706,7 @@ class GenMatRowsSparse final {
 void
 printFatBitVector(const std::vector<char> &bits) {
 	using vst = std::vector<char>::size_type;
-	auto l = bits.size();
+	auto l{bits.size()};
 	if constexpr (printLess) {
 		// Here we should do something comparable to what's done in
 		// BitVector.print, and we don't know how many bits there are in
@@ -715,14 +715,14 @@ printFatBitVector(const std::vector<char> &bits) {
 		// ceiling(l / 64)
 		l = (l - 1) / 64 + 1;
 
-		for (intmax i = 0; sc<vst>(i) < l; i += 64 + 1) {
+		for (intmax i{0}; sc<vst>(i) < l; i += 64 + 1) {
 			std::cout.put(numToASCII(bits[sc<vst>(i)]));
 		}
 		std::cout.put('\n');
 		return;
 	}
 	std::vector<char> ascii(l);
-	for (intmax i = 0; sc<decltype(l)>(i) < l; i++) {
+	for (intmax i{0}; sc<decltype(l)>(i) < l; i++) {
 		ascii[sc<vst>(i)] = numToASCII(bits[sc<vst>(i)]);
 	}
 	std::cout.write(ascii.data(), sc<std::streamsize>(ascii.size())).put('\n');
@@ -738,17 +738,17 @@ class GenMatRowsDense final {
 
 	// Makes the generator matrix for the [n, k] Hamming code.
 	GenMatRowsDense(intmax n) {
-		intmax rows = hammingK(n);
+		intmax rows{hammingK(n)};
 		m.reserve(sc<vst>(rows));
-		for (intmax i = 0; i < rows; i++) {
+		for (intmax i{0}; i < rows; i++) {
 			m.emplace_back(BitVector<T, S>(BitVector<T, S>::ConstrTypeZero::e, n));
 		}
-		for (intmax i = 0; i < rows; i++) {
-			uintmax Col = sc<uintmax>(hammingN(i + 1));
+		for (intmax i{0}; i < rows; i++) {
+			auto Col{sc<uintmax>(hammingN(i + 1))};
 
-			intmax j = 0;
-			for (uintmax col = Col; col != 0;) {
-				auto d = std::countr_zero(col);
+			intmax j{0};
+			for (auto col{Col}; col != 0;) {
+				auto d{std::countr_zero(col)};
 				j += d;
 				m[sc<vst>(i)].set(1, sc<intmax>((1UL << j) - 1));
 
@@ -767,7 +767,7 @@ class GenMatRowsDense final {
 		BitVector<T, S> out(BitVector<T, S>::ConstrTypeZero::e, m[0].getLen());
 
 		// Add relevant rows of the matrix to out.
-		for (intmax len = row.getLen(), i = 0; i < len; i++) {
+		for (intmax len{row.getLen()}, i{0}; i < len; i++) {
 			// Add to out the row m[i] multiplied by the bit row[i].
 			out.maskedExOr(m[sc<vst>(i)], sc<uint8>(row.isSet(i)));
 		}
@@ -777,8 +777,8 @@ class GenMatRowsDense final {
 	// Prints the matrix.
 	void
 	print() const {
-		intmax rows = m.size();
-		for (intmax r = 0; r < rows; r++) {
+		auto rows{sc<intmax>(m.size())};
+		for (intmax r{0}; r < rows; r++) {
 			m[sc<vst>(r)].print();
 		}
 		std::cout.put('\n');
@@ -802,9 +802,9 @@ makeBitVectorVectorWithInput(X r, intmax chunkSize) {
 	std::vector<BitVector<T, S>> res;
 	res.reserve(1UL << 4);
 	res.emplace_back(BitVector<T, S>(BitVector<T, S>::ConstrTypeZero::e, chunkSize));
-	intmax len = 0;
-	for (typename decltype(res)::size_type i = 0;;) {
-		int c = r();
+	intmax len{0};
+	for (typename decltype(res)::size_type i{0};;) {
+		int c{r()};
 		if (c == '	' || c == ' ' || c == '\n' || c == '\r') {
 			continue;
 		}
@@ -839,14 +839,14 @@ LLVMFuzzerTestOneInput(const uint8_t *data, size_t size) {
 	data += sizeof(nByte);
 	size -= sizeof(nByte);
 
-	intmax n = nByte;
+	intmax n{nByte};
 	if (n == 0 || std::has_single_bit(sc<uint>(n))) {
 		return 0;
 	}
-	intmax k = hammingK(n);
+	intmax k{hammingK(n)};
 
 	using bWord = uint8;
-	constexpr int align = 4;
+	constexpr int align{4};
 	using bV = BitVector<bWord, align>;
 
 	class FuzzReader final {
@@ -871,12 +871,12 @@ LLVMFuzzerTestOneInput(const uint8_t *data, size_t size) {
 	} fakeGet(sc<intmax>(size), data);
 
 	bV inMsg(fakeGet);
-	auto inMsgTest = makeBitVectorVectorWithInput<bWord, align>(fakeGet, k);
+	auto inMsgTest{makeBitVectorVectorWithInput<bWord, align>(fakeGet, k)};
 	GenMatRowsDense<bWord, align> genMat(n);
 	GenMatRowsSparse<int> genMatSprs(n);
 	GenMatColsSparse<int> genMatSprsCols(n);
-	decltype(inMsgTest)::size_type I = 0;
-	for (intmax blLen = k, iMsgLen = inMsg.getLen(), i = 0; i < iMsgLen; i += k, I++) {
+	decltype(inMsgTest)::size_type I{0};
+	for (intmax blLen{k}, iMsgLen{inMsg.getLen()}, i{0}; i < iMsgLen; i += k, I++) {
 		if (iMsgLen - i < blLen) {
 			blLen = iMsgLen - i;
 		}
@@ -884,7 +884,7 @@ LLVMFuzzerTestOneInput(const uint8_t *data, size_t size) {
 		if (!iChunk.equal(inMsgTest[I])) {
 			__builtin_trap();
 		}
-		std::vector<char> iChunkFat = iChunk.fatten(), naiveResult = hamCodeNaive(iChunkFat, n);
+		std::vector<char> iChunkFat{iChunk.fatten()}, naiveResult{hamCodeNaive(iChunkFat, n)};
 		if (!(naiveResult == genMat.rowMulMat(iChunk).fatten())) {
 			__builtin_trap();
 		}
@@ -917,7 +917,7 @@ main(int argc, char *argv[]) {
 		             "with two arguments, both natural numbers\n";
 		return 1;
 	}
-	intmax n = lexDecimalASCII(argv[1]);
+	intmax n{lexDecimalASCII(argv[1])};
 	if (n == 0) {
 		std::cerr << "coder: wrong input for first argument (n).\n"
 		             "n can not be zero, because no code words would exist in that case\n";
@@ -929,8 +929,8 @@ main(int argc, char *argv[]) {
 		             "would be wasted in that case as the last bit\n";
 		return 1;
 	}
-	intmax k = lexDecimalASCII(argv[2]);
-	if (auto correctK = hammingK(n); k != correctK) {
+	intmax k{lexDecimalASCII(argv[2])};
+	if (auto correctK{hammingK(n)}; k != correctK) {
 		std::cerr << "coder: the given combination of arguments does not describe\n"
 		             "a Hamming code. Try either (" << n << ", " << correctK <<
 		             ") or (" << hammingN(k) << ", " << k << ").\n";
@@ -975,16 +975,16 @@ main(int argc, char *argv[]) {
 	             "multiplied with the generator to produce\nthe corresponding codeword.\n\n";
 	std::cerr.flush();
 
-	for (intmax blLen = k, iMsgLen = inMsg.getLen(), i = 0; i < iMsgLen; i += k) {
+	for (intmax blLen{k}, iMsgLen{inMsg.getLen()}, i{0}; i < iMsgLen; i += k) {
 		if (iMsgLen - i < blLen) {
 			blLen = iMsgLen - i;
 		}
 
-		constexpr bool usingFatBitVectors = hamCoderAlgo == HammingCoderAlgor::Cols ||
-		                                    hamCoderAlgo == HammingCoderAlgor::ColsSparse ||
-		                                    hamCoderAlgo == HammingCoderAlgor::VeryNaive ||
-						    hamCoderAlgo == HammingCoderAlgor::Rows ||
-						    hamCoderAlgo == HammingCoderAlgor::RowsSparse;
+		constexpr bool usingFatBitVectors{hamCoderAlgo == HammingCoderAlgor::Cols ||
+		                                  hamCoderAlgo == HammingCoderAlgor::ColsSparse ||
+		                                  hamCoderAlgo == HammingCoderAlgor::VeryNaive ||
+						  hamCoderAlgo == HammingCoderAlgor::Rows ||
+						  hamCoderAlgo == HammingCoderAlgor::RowsSparse};
 
 		// Copy blLen bits from inMsg to iChunk and iChunkFat. Whether iChunk or
 		// iChunkFat is used is determined at compilation time.
@@ -1030,7 +1030,7 @@ main(int argc, char *argv[]) {
 	}
 
 	if constexpr (useStopwatch) {
-		auto hca = "VeryNaive ";
+		auto hca{"VeryNaive "};
 		if constexpr (hamCoderAlgo == HammingCoderAlgor::Cols) {
 			hca = "Cols      ";
 		} else if constexpr (hamCoderAlgo == HammingCoderAlgor::ColsSparse) {
