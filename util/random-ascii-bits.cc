@@ -65,7 +65,7 @@ int
 main() {
 	std::ios::sync_with_stdio(false);
 
-	constexpr intmax m{24};
+	constexpr intmax m{2};
 
 	Xoshiro256<PlusPlus> r;
 
