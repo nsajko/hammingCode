@@ -1045,7 +1045,7 @@ main(int argc, char *argv[]) {
 			hca = "RowsSparse";
 		}
 		std::ofstream("/tmp/hammingCoderStopwatch", std::ios_base::app) <<
-		  hca << ' ' << bitStorageAlignment << ' ' << n << ": " <<
+		  hca << ' ' << bitStorageAlignment << ' ' << n << ": " << std::setprecision(15) <<
 		  std::chrono::duration<double>(std::chrono::steady_clock::now() - startTime).
 		  count() << '\n';
 	}
