@@ -937,11 +937,6 @@ main(int argc, char *argv[]) {
 		return 1;
 	}
 
-	std::chrono::time_point<std::chrono::steady_clock> startTime;
-	if constexpr (useStopwatch) {
-		startTime = std::chrono::steady_clock::now();
-	}
-
 	std::cerr << "Linear block code [n = " << n << ", k = " << k <<
 	             "]\n(n = code word length) (k = number of source bits in each code word)\n"
 	             "code rate = R(K) = " << (sc<double>(k) / sc<double>(n)) <<
@@ -974,6 +969,11 @@ main(int argc, char *argv[]) {
 	             "last bits are padded with zeros. Each input part is\n"
 	             "multiplied with the generator to produce\nthe corresponding code word.\n\n";
 	std::cerr.flush();
+
+	std::chrono::time_point<std::chrono::steady_clock> startTime;
+	if constexpr (useStopwatch) {
+		startTime = std::chrono::steady_clock::now();
+	}
 
 	for (intmax blLen{k}, iMsgLen{inMsg.getLen()}, i{0}; i < iMsgLen; i += k) {
 		if (iMsgLen - i < blLen) {
