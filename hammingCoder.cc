@@ -937,38 +937,46 @@ main(int argc, char *argv[]) {
 		return 1;
 	}
 
-	std::cerr << "Linear block code [n = " << n << ", k = " << k <<
+	if constexpr (!printLess) {
+		std::cerr <<
+	             "Linear block code [n = " << n << ", k = " << k <<
 	             "]\n(n = code word length) (k = number of source bits in each code word)\n"
 	             "code rate = R(K) = " << (sc<double>(k) / sc<double>(n)) <<
 	             "\n\nEnter a message in bits (possibly separated by whitespace)\n"
 	             "to be Hamming coded using the chosen code parameters:\n\n";
-	std::cerr.flush();
+		std::cerr.flush();
+	}
 
 	using bWord = uintmax;
 	using bV = BitVector<bWord, bitStorageAlignment>;
 
 	bV inMsg([]()->int {return std::cin.get();});
-	std::cerr << "\nInput source message:\n";
-	std::cerr.flush();
-	inMsg.print();
+	if constexpr (!printLess) {
+		std::cerr << "\nInput source message:\n";
+		std::cerr.flush();
+		inMsg.print();
+	}
 
 	// Make and show the code's generator matrix.
 	GenMatRowsDense<bWord, bitStorageAlignment> genMat(n);
 	GenMatRowsSparse<int> genMatSprs(n);
 	GenMatColsSparse<int> genMatSprsCols(n);
-	if constexpr (hamCoderAlgo == HammingCoderAlgor::RowsDense) {
+	if constexpr (!printLess && hamCoderAlgo == HammingCoderAlgor::RowsDense) {
 		std::cerr << "\nThe generator matrix for the code:\n\n";
 		std::cerr.flush();
 		genMat.print();
 	}
 
-	std::cout << '\n';
+	if constexpr (!printLess) {
+		std::cout << '\n';
 
-	std::cerr << "To encode the entire source input string into code words, we divide the\n"
+		std::cerr <<
+	             "To encode the entire source input string into code words, we divide the\n"
 	             "input string into parts of k or less bits, where the last part's\n"
 	             "last bits are padded with zeros. Each input part is\n"
 	             "multiplied with the generator to produce\nthe corresponding code word.\n\n";
-	std::cerr.flush();
+		std::cerr.flush();
+	}
 
 	std::chrono::time_point<std::chrono::steady_clock> startTime;
 	if constexpr (useStopwatch) {
