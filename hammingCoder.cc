@@ -961,7 +961,7 @@ main(int argc, char *argv[]) {
 	GenMatRowsDense<bWord, bitStorageAlignment> genMat(n);
 	GenMatRowsSparse<int> genMatSprs(n);
 	GenMatColsSparse<int> genMatSprsCols(n);
-	if constexpr (!printLess && hamCoderAlgo == HammingCoderAlgor::RowsDense) {
+	if constexpr (!printLess) {
 		std::cerr << "\nThe generator matrix for the code:\n\n";
 		std::cerr.flush();
 		genMat.print();
