@@ -969,10 +969,10 @@ main(int argc, char *argv[]) {
 
 	std::cout << '\n';
 
-	std::cerr << "To encode the entire source input string into codewords, we divide the\n"
+	std::cerr << "To encode the entire source input string into code words, we divide the\n"
 	             "input string into parts of k or less bits, where the last part's\n"
 	             "last bits are padded with zeros. Each input part is\n"
-	             "multiplied with the generator to produce\nthe corresponding codeword.\n\n";
+	             "multiplied with the generator to produce\nthe corresponding code word.\n\n";
 	std::cerr.flush();
 
 	for (intmax blLen{k}, iMsgLen{inMsg.getLen()}, i{0}; i < iMsgLen; i += k) {
