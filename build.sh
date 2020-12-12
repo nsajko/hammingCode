@@ -3,7 +3,7 @@ set -u
 
 cxx_opt='-std=c++20 -Werror -Wall -Wextra -Wno-unused-function -Wcast-align -Wconversion -Wold-style-cast -g -march=native -O3 -fno-exceptions'
 
-opt="-o hammingCoder-$1 $cxx_opt -D HAM_COD_ALG=HammingCoderAlgor::RowsDense hammingCoder.cc"
+opt="-D FORCE_COMPUTATION_AND_DISALLOW_REORDERING -D USE_STOPWATCH -D PRINT_LESS -D FORCE_COMPUTATION_AND_DISALLOW_REORDERING -o hammingCoder-$1 $cxx_opt hammingCoder.cc"
 
 polly_opt=
 # polly_opt="-mllvm -polly"
@@ -25,11 +25,53 @@ clang-callgraph)
 clang)
 	clang++ $clang_opt
 	;;
+clang-RowsDense)
+	clang++ -D HAM_COD_ALG=HammingCoderAlgor::RowsDense $clang_opt
+	;;
+clang-Cols)
+	clang++ -D HAM_COD_ALG=HammingCoderAlgor::Cols $clang_opt
+	;;
+clang-ColsSparse)
+	clang++ -D HAM_COD_ALG=HammingCoderAlgor::ColsSparse $clang_opt
+	;;
+clang-VeryNaive)
+	clang++ -D HAM_COD_ALG=HammingCoderAlgor::VeryNaive $clang_opt
+	;;
+clang-Dummy)
+	clang++ -D HAM_COD_ALG=HammingCoderAlgor::Dummy $clang_opt
+	;;
+clang-Rows)
+	clang++ -D HAM_COD_ALG=HammingCoderAlgor::Rows $clang_opt
+	;;
+clang-RowsSparse)
+	clang++ -D HAM_COD_ALG=HammingCoderAlgor::RowsSparse $clang_opt
+	;;
 gcc)
 	g++ $gcc_opt
 	;;
+gcc-RowsDense)
+	g++ -D HAM_COD_ALG=HammingCoderAlgor::RowsDense $gcc_opt
+	;;
+gcc-Cols)
+	g++ -D HAM_COD_ALG=HammingCoderAlgor::Cols $gcc_opt
+	;;
+gcc-ColsSparse)
+	g++ -D HAM_COD_ALG=HammingCoderAlgor::ColsSparse $gcc_opt
+	;;
+gcc-VeryNaive)
+	g++ -D HAM_COD_ALG=HammingCoderAlgor::VeryNaive $gcc_opt
+	;;
+gcc-Dummy)
+	g++ -D HAM_COD_ALG=HammingCoderAlgor::Dummy $gcc_opt
+	;;
+gcc-Rows)
+	g++ -D HAM_COD_ALG=HammingCoderAlgor::Rows $gcc_opt
+	;;
+gcc-RowsSparse)
+	g++ -D HAM_COD_ALG=HammingCoderAlgor::RowsSparse $gcc_opt
+	;;
 fuzz)
-	clang++ -D FUZZ_AGAINST_VERY_NAIVE -fsanitize=fuzzer,address,undefined -fsanitize-trap=undefined -fno-omit-frame-pointer -D FUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION $clang_opt
+	clang++ -fsanitize=fuzzer,address,undefined -fsanitize-trap=undefined -fno-omit-frame-pointer -D FUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION $clang_opt
 	;;
 nofuzz-clang)
 	clang++ -fsanitize=address,undefined -fsanitize-trap=undefined -fno-omit-frame-pointer -D FUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION $clang_opt nofuzz.cc

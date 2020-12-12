@@ -52,6 +52,13 @@ enum class HammingCoderAlgor {
 [[maybe_unused]] constexpr HammingCoderAlgor hamCoderAlgo{HAM_COD_ALG};
 #undef HAM_COD_ALG
 
+#ifdef FORCE_COMPUTATION_AND_DISALLOW_REORDERING
+#   undef FORCE_COMPUTATION_AND_DISALLOW_REORDERING
+[[maybe_unused]] constexpr bool forceComputationAndDisallowReordering{true};
+#else
+[[maybe_unused]] constexpr bool forceComputationAndDisallowReordering{false};
+#endif
+
 #ifdef USE_STOPWATCH
 #   undef USE_STOPWATCH
 [[maybe_unused]] constexpr bool useStopwatch{true};
@@ -396,14 +403,6 @@ class BitVector final {
 	// Shows the bit vector on stdout.
 	void
 	print() const {
-		if constexpr (printLess) {
-			for (intmax i{0}; i < len; i += wordBits + 1) {
-				std::cout.put(
-				  numToASCII(((*this)[i / wordBits] >> (i % wordBits)) & 1UL));
-			}
-			std::cout.put('\n');
-			return;
-		}
 		using chars = std::vector<char>;
 		chars buf(sc<chars::size_type>(len));
 		for (intmax i{0}; i < len; i++) {
@@ -707,20 +706,6 @@ void
 printFatBitVector(const std::vector<char> &bits) {
 	using vst = std::vector<char>::size_type;
 	auto l{bits.size()};
-	if constexpr (printLess) {
-		// Here we should do something comparable to what's done in
-		// BitVector.print, and we don't know how many bits there are in
-		// BitVector's word, but assuming 64 seems fine for now.
-
-		// ceiling(l / 64)
-		l = (l - 1) / 64 + 1;
-
-		for (intmax i{0}; sc<vst>(i) < l; i += 64 + 1) {
-			std::cout.put(numToASCII(bits[sc<vst>(i)]));
-		}
-		std::cout.put('\n');
-		return;
-	}
 	std::vector<char> ascii(l);
 	for (intmax i{0}; sc<decltype(l)>(i) < l; i++) {
 		ascii[sc<vst>(i)] = numToASCII(bits[sc<vst>(i)]);
@@ -1016,28 +1001,55 @@ main(int argc, char *argv[]) {
 			std::cerr << "Output: ";
 			std::cerr.flush();
 		}
+		std::vector<char> codeWord;
 		if constexpr (hamCoderAlgo == HammingCoderAlgor::VeryNaive) {
-			printFatBitVector(hamCodeNaive(iChunkFat, n));
+			codeWord = hamCodeNaive(iChunkFat, n);
 		} else if constexpr (hamCoderAlgo == HammingCoderAlgor::Cols) {
-			printFatBitVector(hamCodeCols(iChunkFat, n));
+			codeWord = hamCodeCols(iChunkFat, n);
 		} else if constexpr (hamCoderAlgo == HammingCoderAlgor::ColsSparse) {
-			printFatBitVector(genMatSprsCols.rowMulMat(iChunkFat));
+			codeWord = genMatSprsCols.rowMulMat(iChunkFat);
 		} else if constexpr (hamCoderAlgo == HammingCoderAlgor::RowsDense) {
-			genMat.rowMulMat(iChunk).print();
+			codeWord = genMat.rowMulMat(iChunk).fatten();
 		} else if constexpr (hamCoderAlgo == HammingCoderAlgor::Dummy) {
-			bV(bV::ConstrTypeDummyCoder::e, iChunk, n).print();
+			codeWord = bV(bV::ConstrTypeDummyCoder::e, iChunk, n).fatten();
 		} else if constexpr (hamCoderAlgo == HammingCoderAlgor::Rows) {
-			printFatBitVector(hamCodeRows(iChunkFat, n));
+			codeWord = hamCodeRows(iChunkFat, n);
 		} else if constexpr (hamCoderAlgo == HammingCoderAlgor::RowsSparse) {
-			printFatBitVector(genMatSprs.rowMulMat(iChunkFat));
+			codeWord = genMatSprs.rowMulMat(iChunkFat);
 		} else {
 			// We should have covered all enumeration constants above, so this
 			// shouldn't ever happen.
 			__builtin_trap();
 		}
+		if constexpr (forceComputationAndDisallowReordering) {
+			// Phantom use. This will probably be called only if printLess
+			// and useStopwatch are true, in which case we should be concerned
+			// about the possibility that the compiler eliminates the coding
+			// altogether, or similar. The following lines of code tell
+			// the compiler that some opaque assembly code depends on our
+			// code word and that that code may do anything with the
+			// "received" code word. Crucially, this includes an operation
+			// that causes an observable event (think sending the data over
+			// the network with a system call). A compiler, of course,
+			// must not cause any changes from the correct observable behavior.
+			//
+			// The empty constraints should mean that the compiler doesn't
+			// actually emit any "additional" instructions as a result of
+			// these asm declarations, it should not actually move any byte
+			// belonging the std::vector to either memory or a register.
+			asm volatile ("" :: ""(codeWord.size()));
+			for (auto x: codeWord) {
+				asm volatile ("" :: ""(x));
+			}
+		}
+		if constexpr (!printLess) {
+			printFatBitVector(codeWord);
+		}
 	}
 
 	if constexpr (useStopwatch) {
+		auto duration{std::chrono::duration<double>(std::chrono::steady_clock::now() -
+		                                            startTime).count()};
 		auto hca{"VeryNaive "};
 		if constexpr (hamCoderAlgo == HammingCoderAlgor::Cols) {
 			hca = "Cols      ";
@@ -1052,10 +1064,7 @@ main(int argc, char *argv[]) {
 		} else if constexpr (hamCoderAlgo == HammingCoderAlgor::RowsSparse) {
 			hca = "RowsSparse";
 		}
-		std::ofstream("/tmp/hammingCoderStopwatch", std::ios_base::app) <<
-		  hca << ' ' << bitStorageAlignment << ' ' << n << ": " << std::setprecision(15) <<
-		  std::chrono::duration<double>(std::chrono::steady_clock::now() - startTime).
-		  count() << '\n';
+		std::cout << hca << ' ' << n << ": " << std::setprecision(15) << duration << '\n';
 	}
 
 	return 0;
