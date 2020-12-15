@@ -35,6 +35,9 @@ constexpr intmax byteBits{8};
 
 // Hamming code algorithms.
 enum class HammingCoderAlgor {
+	// If this is the value, it shouldn't ever be read.
+	Void,
+
 	Rows,
 	RowsSparse,
 	RowsDense,
@@ -49,8 +52,12 @@ enum class HammingCoderAlgor {
 // Macros are used for conditional compilation, but the goal is to replace them with
 // constexpr variables as soon as possible, undeffing the macros simultaneously.
 
+#ifdef HAM_COD_ALG
 [[maybe_unused]] constexpr HammingCoderAlgor hamCoderAlgo{HAM_COD_ALG};
-#undef HAM_COD_ALG
+#   undef HAM_COD_ALG
+#else
+[[maybe_unused]] constexpr HammingCoderAlgor hamCoderAlgo{HammingCoderAlgor::Void};
+#endif
 
 #ifdef FORCE_COMPUTATION_AND_DISALLOW_REORDERING
 #   undef FORCE_COMPUTATION_AND_DISALLOW_REORDERING
