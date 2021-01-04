@@ -60,7 +60,7 @@ enum class HammingCoderAlgor {
 #endif
 
 #ifdef FORCE_COMPUTATION_AND_DISALLOW_REORDERING
-#   undef FORCE_COMPUTATION_AND_DISALLOW_REORDERING
+// XXX TODO: uncomment once the Clang bug is fixed: #   undef FORCE_COMPUTATION_AND_DISALLOW_REORDERING
 [[maybe_unused]] constexpr bool forceComputationAndDisallowReordering{true};
 #else
 [[maybe_unused]] constexpr bool forceComputationAndDisallowReordering{false};
@@ -1044,10 +1044,14 @@ main(int argc, char *argv[]) {
 			// actually emit any "additional" instructions as a result of
 			// these asm declarations, it should not actually move any byte
 			// belonging the std::vector to either memory or a register.
+			//
+			// XXX TODO: remove the ifdef once the Clang bug is fixed.
+#ifdef FORCE_COMPUTATION_AND_DISALLOW_REORDERING
 			asm volatile ("" :: ""(codeWord.size()));
 			for (auto x: codeWord) {
 				asm volatile ("" :: ""(x));
 			}
+#endif
 		}
 		if constexpr (!printLess) {
 			printFatBitVector(codeWord);
