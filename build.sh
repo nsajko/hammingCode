@@ -3,7 +3,7 @@ set -u
 
 cxx_opt='-std=c++20 -Werror -Wall -Wextra -Wno-unused-function -Wcast-align -Wconversion -Wold-style-cast -g -march=native -O3 -fno-exceptions'
 
-opt="-D FORCE_COMPUTATION_AND_DISALLOW_REORDERING -D USE_STOPWATCH -D PRINT_LESS -D FORCE_COMPUTATION_AND_DISALLOW_REORDERING -o hammingCoder-$1 $cxx_opt hammingCoder.cc"
+opt="-o hammingCoder-$1 $cxx_opt hammingCoder.cc"
 
 polly_opt=
 # polly_opt="-mllvm -polly"
@@ -15,7 +15,7 @@ gcc_opt="-fmax-errors=4 -flto $opt"
 
 case "$1" in
 gcc-musl)
-	x86_64-linux-musl-g++ -static $gcc_opt
+	x86_64-linux-musl-g++ -static -D HAM_COD_ALG=HammingCoderAlgor::RowsDense -flto -std=c++20 -O3 -fno-exceptions -o "hammingCoder-$1" hammingCoder.cc
 	;;
 clang-callgraph)
 	clang++ -std=c++20 -g -march=native -O3 -fno-exceptions -stdlib=libstdc++ -emit-llvm -S -o - hammingCoder.cc | opt -dot-callgraph
