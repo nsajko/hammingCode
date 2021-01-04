@@ -11,14 +11,13 @@
 # * A plot of the function that maps line numbers to floating point values, based on
 #   a single input file.
 #
-# * A histogram that represents the distribution of the floating point values in
-#   a single input file. The histograms come in several different bin sizes. Each
-#   histogram is overlayed with a probability density function (PDF) estimation.
+# * A probability density function (PDF) estimation for a single input file. This is like
+#   a histogram in that it represents the distribution of the floating point values, but
+#   much better.
 #
 # * For each input file, a function that maps line numbers to floating point values.
 #
-# * Multiple probability density function (PDF) estimations, each sourced from
-#   a single input file.
+# * Multiple density estimations, each sourced from a single input file.
 
 module PlotDat
 
@@ -26,31 +25,51 @@ using DataFrames, Gadfly
 
 export main
 
+const Q = Rational{Int}
 const F = BigFloat
 const V = Vector{F}
 const VV = Vector{V}
 const VI = Vector{Int}
 
+# Floating point number representation precision.
 const fpprec = 8192
+
+Fl(x::T) where {T} = F(x, precision=fpprec)
+
+const numTicks = 30
+
+# Can be adjusted. E.g. I used 20 for Intel Skylake.
+const ticksDenominator = 14
+
+const ticksVal = F[Fl(n // ticksDenominator) for n in 0:numTicks]
+
+# Maximal (expected) measured value.
+const maxVal = Fl(numTicks // ticksDenominator)
 
 function drawSeq(outName::String, y::V)::Nothing
 	# Make indices.
-	local x::VI = [0 for _ in 1:size(y, 1)]
-	for i in 1:size(y, 1)
-		x[i] = i
-	end
+	local numSamples::Int = size(y, 1)
+	local x::VI = [i for i in 1:numSamples]
 
-	draw(SVG(string("plots-seq/", outName, ".svg"), 20cm, 20cm), plot(layer(DataFrame(
-	  seq_num=x, value=y), x=:seq_num, y=:value, Geom.point)))
+	draw(SVG(string("plots-seq/", outName, ".svg"), 40cm, 20cm), plot(
+	  Coord.cartesian(xmin=0, ymin=0, xmax=numSamples, ymax=maxVal),
+	  Guide.xticks(ticks=[i for i in 0:(numSamples ÷ 4):numSamples]),
+	  Guide.yticks(ticks=ticksVal),
+	  Guide.xlabel("index in the sequence"),
+	  Guide.ylabel("value (seconds)"),
+	  layer(DataFrame(
+	  seq_num=x, value=y), x=:seq_num, y=:value, size=[1pt], Geom.point, Theme(highlight_width=0pt))))
 
 	return nothing
 end
 
-function drawHist(outName::String, x::V, bc::Int)::Nothing
+function drawHist(outName::String, x::V)::Nothing
 	local df::DataFrame = DataFrame(value=x)
-	draw(SVG(string("plots-hist/", outName, "-bincount:", bc, ".svg"), 20cm, 20cm), plot(
-	  layer(df, x=:value, Geom.density, color=[:pdf]),
-	  layer(df, x=:value, Geom.histogram(bincount=bc), color=[:histogram])))
+	draw(SVG(string("plots-hist/", outName, ".svg"), 40cm, 20cm), plot(
+	  Coord.cartesian(xmin=0, xmax=maxVal),
+	  Guide.xticks(ticks=ticksVal),
+	  Guide.xlabel("value (seconds)"),
+	  layer(df, x=:value, Geom.density)))
 
 	return nothing
 end
@@ -64,7 +83,7 @@ function main()::Nothing
 	local args::Vector{String} = ARGS[2:n]
 	n = n - 1
 
-	setprecision(BigFloat, fpprec)
+	setprecision(F, fpprec)
 
 	# Read input files.
 	local x::VV = [F[] for _ in 1:n]
@@ -72,7 +91,7 @@ function main()::Nothing
 		open(args[i], lock=false, read=true) do f
 			while !eof(f)
 				local l::String = readline(f)
-				push!(x[i], BigFloat(l[findfirst(':', l) + 1:length(l)], precision=fpprec))
+				push!(x[i], F(l[findfirst(':', l) + 1:length(l)], precision=fpprec))
 			end
 		end
 	end
@@ -84,19 +103,26 @@ function main()::Nothing
 
 	# Draw the histograms and probability density estimations.
 	for i in 1:n
-		for bc in 30:10:60
-			drawHist(basename(args[i]), x[i], bc)
-		end
+		drawHist(basename(args[i]), x[i])
 	end
 
 	# Draw the combined sequence plot.
 	local numSamples::Int = size(x[1], 1)     # Assuming all files have the same amount of samples!
 	local indices::VI = [j for j in 1:numSamples]
-	draw(SVG(string("plots-seq/", combinedName, ".svg"), 20cm, 20cm), plot(
-	  [layer(DataFrame(seq_num=indices, value=x[i]), x=:seq_num, y=:value, Geom.point, color=[basename(args[i])]) for i in 1:n]...))
+	draw(SVG(string("plots-seq/", combinedName, ".svg"), 40cm, 20cm), plot(Theme(key_position=:bottom),
+	  Coord.cartesian(xmin=0, ymin=0, xmax=numSamples, ymax=maxVal),
+	  Guide.xticks(ticks=[i for i in 0:(numSamples ÷ 4):numSamples]),
+	  Guide.yticks(ticks=ticksVal),
+	  Guide.xlabel("index in the sequence"),
+	  Guide.ylabel("value (seconds)"),
+	  [layer(DataFrame(seq_num=indices, value=x[i]), x=:seq_num, y=:value,
+	  size=[1pt], Geom.point, Theme(highlight_width=0pt), color=[basename(args[i])]) for i in 1:n]...))
 
 	# Draw the combined histograms.
-	draw(SVG(string("plots-hist/", combinedName, ".svg"), 20cm, 20cm), plot(
+	draw(SVG(string("plots-hist/", combinedName, ".svg"), 40cm, 20cm), plot(Theme(key_position=:bottom),
+	  Coord.cartesian(xmin=0, xmax=maxVal),
+	  Guide.xticks(ticks=ticksVal),
+	  Guide.xlabel("value (seconds)"),
 	  [layer(DataFrame(value=x[i]), x=:value, Geom.density, color=[basename(args[i])]) for i in 1:n]...))
 
 	return nothing
